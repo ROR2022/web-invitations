@@ -1,0 +1,166 @@
+Plan de Implementación: Editor Visual de Plantillas de Invitaciones
+Aquí tienes un plan paso a paso para implementar el editor visual para la creación de plantillas de invitaciones sin necesidad de escribir código:
+
+-----Fase 1: Preparación y Arquitectura (2-3 semanas)
+
+1. Análisis y Mapeo de Componentes
+Semana 1
+Inventariar todos los componentes existentes en las plantillas actuales 
+(hero, countdown, gallery, etc.)
+Determinar qué propiedades de cada componente deben ser configurables
+Crear un esquema JSON para cada componente que defina sus propiedades configurables
+
+2. Diseño de la Base de Datos
+Semana 1-2
+Modificar el esquema de la tabla templates para almacenar configuración JSON 
+en lugar de código HTML/CSS/JS
+Crear nuevas tablas para componentes y sus configuraciones, si es necesario
+Diseñar sistema de "temas" reusables (combinaciones de colores y tipografías)
+sql
+CopyInsert
+-- Ejemplo de modificación a la tabla templates
+ALTER TABLE templates
+ADD COLUMN components_config JSONB DEFAULT '[]',
+ADD COLUMN theme_config JSONB DEFAULT '{}';
+
+3. Configuración del Entorno de Desarrollo
+Semana 2
+Configurar herramientas necesarias (React DnD o similar para drag and drop)
+Crear estructura de carpetas para el nuevo sistema
+Definir interfaces TypeScript para los tipos de datos
+
+-----Fase 2: Desarrollo de Componentes Base (3-4 semanas)
+
+4. Crear Biblioteca de Componentes Configurables
+Semana 3-4
+Convertir cada componente actual a una versión "configurable"
+Implementar propiedades para personalizar estilos sin código
+Documentar cada componente y sus opciones
+tsx
+CopyInsert
+// Ejemplo de componente configurable
+type HeroProps = {
+  backgroundImage: string;
+  title: string;
+  subtitle: string;
+  titleColor: string;
+  subtitleColor: string;
+  animation: "fade" | "slide" | "zoom";
+  // ... otras propiedades
+};
+
+function ConfigurableHero(props: HeroProps) {
+  return (
+    <section 
+      className="relative h-screen flex flex-col items-center justify-center"
+      style={{
+        background: `url(${props.backgroundImage})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center"
+      }}
+    >
+      <motion.h1
+        initial={getAnimationFromType(props.animation).initial}
+        animate={getAnimationFromType(props.animation).animate}
+        style={{ color: props.titleColor }}
+      >
+        {props.title}
+      </motion.h1>
+      {/* ... */}
+    </section>
+  );
+}
+
+5. Desarrollar Sistema de Temas
+Semana 5
+Crear sistema de temas con paletas de colores predefinidas
+Implementar selección de combinaciones tipográficas
+Desarrollar sistema para previsualizar temas en tiempo real
+6. Implementar Generador de Código
+Semana 6
+Desarrollar función que convierta configuración JSON a código HTML/CSS/JS
+Crear sistema de renderizado dinámico para previsualización
+
+-----Fase 3: Desarrollo del Editor Visual (3-4 semanas)
+7. Interfaz de Administración
+Semana 7-8
+Diseñar la interfaz del editor visual basada en Shadcn UI
+Implementar sistema drag & drop para ordenar secciones
+Crear área de previsualización en tiempo real
+8. Panel de Propiedades
+Semana 9
+Desarrollar paneles para configurar propiedades de cada componente
+Crear selectores de color, tipografía, animaciones, etc.
+Implementar sistema de guardado automático
+9. Gestión de Recursos
+Semana 10
+Crear sistema de carga y gestión de imágenes
+Implementar biblioteca de recursos (iconos, fondos, decoraciones)
+Integrar con Supabase Storage
+
+-----Fase 4: Integración y Pruebas (2-3 semanas)
+10. Integración con el Sistema Existente
+Semana 11
+Conectar el editor con el sistema actual de gestión de plantillas
+Implementar migración para plantillas existentes
+Crear APIs para guardar y recuperar configuraciones
+11. Pruebas y Optimización
+Semana 12
+Realizar pruebas de usuario con administradores
+Optimizar rendimiento del editor y las invitaciones generadas
+Resolver problemas de compatibilidad entre navegadores
+
+-----Fase 5: Lanzamiento y Documentación (1-2 semanas)
+12. Documentación
+Semana 13
+Crear guías para administradores y usuarios
+Documentar API y estructura de datos
+Preparar tutoriales en video
+13. Despliegue
+Semana 14
+Desplegar la nueva función en producción
+Monitorear rendimiento y errores
+Recolectar feedback inicial
+Detalles técnicos importantes
+Estructura de datos para componentes
+typescript
+CopyInsert
+// Ejemplo de estructura JSON para almacenar configuración
+interface TemplateConfig {
+  theme: {
+    colors: {
+      primary: string;
+      secondary: string;
+      background: string;
+      text: string;
+    };
+    fonts: {
+      heading: string;
+      body: string;
+      accent: string;
+    };
+    spacing: {
+      sections: "compact" | "normal" | "spacious";
+    };
+  };
+  components: {
+    id: string;
+    type: "hero" | "countdown" | "gallery" | "eventDetails" | "attendance" | "giftOptions" | "thankYou";
+    order: number;
+    props: Record<string, any>; // Propiedades específicas del componente
+    visible: boolean;
+  }[];
+  variables: {
+    name: string;
+    type: "text" | "date" | "location" | "image" | "color";
+    defaultValue: any;
+    label: string;
+  }[];
+}
+Herramientas recomendadas
+React DnD o react-beautiful-dnd para la funcionalidad de arrastrar y soltar
+react-color para selectores de color
+react-datepicker para campos de fecha
+react-hook-form para manejar formularios del editor
+zustand para gestión de estado del editor
+Este plan proporciona una hoja de ruta detallada para transformar el sistema actual en un editor visual potente y accesible. Cada fase se construye sobre la anterior y permite ir probando la funcionalidad de manera iterativa.

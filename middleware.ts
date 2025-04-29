@@ -1,7 +1,25 @@
-import { type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/utils/supabase/middleware";
+import { isAuthenticated, isAdmin } from "./services/supabaseClient";
 
 export async function middleware(request: NextRequest) {
+
+  // Check if the request is for /admin
+  const isAdminPath = request.nextUrl.pathname.startsWith("/admin");
+
+  if(isAdminPath) {
+    // Check if the user is authenticated
+    if(!await isAuthenticated()) {
+      // Redirect to the login page if not authenticated
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+    if(!await isAdmin()) {
+      // Redirect to the home page if not an admin
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
+
   return await updateSession(request);
 }
 

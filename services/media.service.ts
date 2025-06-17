@@ -2,7 +2,7 @@ import { getSupabase } from "./supabaseClient";
 
 export const uploadMedia = async (path: string, file: File) => {
   const supabase = await getSupabase();
-  return supabase.storage.from('invitation-media').upload(path, file, {
+  return supabase.storage.from('invitations-media').upload(path, file, {
     cacheControl: '3600',
     upsert: false,
     contentType: (file as any).type,

@@ -9,6 +9,7 @@ import { Upload, Image as ImageIcon, X } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {createClient} from '@/utils/supabase/client';
 
+
 interface ImageUploaderProps {
   bucketName?: string;
   folderPath?: string;
@@ -21,7 +22,7 @@ interface ImageUploaderProps {
  * Componente para subir imágenes a Supabase Storage
  */
 const ImageUploader: React.FC<ImageUploaderProps> = ({
-  bucketName = 'invitation-resources',
+  bucketName = 'invitations-media',
   folderPath = 'images',
   onUploadComplete,
   maxSizeMB = 5,
@@ -110,17 +111,23 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
       const progressInterval = setInterval(updateProgress, 200);
       
       // Subir el archivo
-      const { data, error } = await supabase.storage
-        .from(bucketName)
+       const { data, error } = await supabase.storage
+        .from('invitations-media')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
           upsert: false
         });
       
+
       clearInterval(progressInterval);
       
       if (error) {
+        console.error('Error al subir la imagen: ', error);
         throw error;
+      }
+
+      if(data) {
+        console.warn('Imagen subida con éxito: ', data);
       }
       
       setProgress(100);

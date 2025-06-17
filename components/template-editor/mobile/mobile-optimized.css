@@ -1,0 +1,211 @@
+/* Estilos para el editor móvil optimizado - Fase 5 */
+
+/* Indicadores de carga */
+.mobile-editor-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: 20px;
+  text-align: center;
+  color: #6b21a8;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  margin-bottom: 16px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid #9333ea;
+  animation: spinner 1s linear infinite;
+}
+
+.mobile-editor-offline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  padding: 20px;
+  text-align: center;
+  color: #f87171;
+  background-color: #fef2f2;
+  border-radius: 8px;
+}
+
+.mobile-editor-offline p {
+  margin-top: 16px;
+  max-width: 300px;
+}
+
+/* Contenedor de componentes optimizado */
+.editable-component-wrapper {
+  position: relative;
+  margin-bottom: 16px;
+  transition: opacity 0.3s ease-in-out;
+}
+
+.editable-component-wrapper.optimized {
+  will-change: opacity, transform;
+}
+
+/* Modo de bajo ancho de banda */
+.low-bandwidth-mode .editable-component-wrapper {
+  transition: none;
+}
+
+.low-bandwidth-mode .background-image {
+  filter: blur(0px) !important;
+  transform: scale(1) !important;
+  transition: none !important;
+}
+
+/* Animaciones */
+@keyframes spinner {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Optimizaciones para diferentes tamaños de pantalla */
+@media (max-width: 640px) {
+  .mobile-editor-loading, 
+  .mobile-editor-offline {
+    min-height: 40vh;
+  }
+  
+  .loading-spinner {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* Estado conectado/desconectado */
+.network-status-indicator {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.network-status-indicator.offline {
+  background-color: #ef4444;
+  color: white;
+}
+
+.network-status-indicator.slow {
+  background-color: #f59e0b;
+  color: white;
+}
+
+.network-status-indicator.online {
+  background-color: #10b981;
+  color: white;
+}
+
+/* Network Error Styles */
+.network-error-container {
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  margin: 20px auto;
+  max-width: 400px;
+  text-align: center;
+}
+
+.network-error-icon {
+  color: #ef4444;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+}
+
+.network-error-content h3 {
+  font-size: 18px;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.network-error-content p {
+  color: #666;
+  margin-bottom: 16px;
+}
+
+.failed-resources-info {
+  background-color: #f8f8f8;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  color: #666;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+.retry-button {
+  background-color: #9333ea;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  cursor: pointer;
+  border: none;
+}
+
+.retry-button:hover {
+  background-color: #6b21a8;
+}
+
+.retry-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.slow-connection-warning {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #f59e0b;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.fallback-content-container {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+}
+
+/* Fade in animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}

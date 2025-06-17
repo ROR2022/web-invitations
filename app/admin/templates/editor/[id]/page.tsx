@@ -1,109 +1,251 @@
-"use client";
+'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
+import { useEffect, useState, useCallback } from 'react';
+import { useRouter, useParams, notFound, redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Invitation, InvitationStatus, PackageType, EventType } from '@/types/invitation';
 import { TemplateConfig } from '@/components/template-editor/types';
 import TemplateEditor from '@/components/template-editor/TemplateEditor';
 import { defaultTheme } from '@/components/template-editor/themeSchemas';
-//import { componentDefaultProps } from '@/components/template-editor/configurable/componentSchemas';
 import { Loader2 } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
-import { generateCode } from '@/components/template-editor/codeGenerator';
+import { useToast } from '@/hooks/use-toast';
+import { useUser } from '@/hooks/use-user';
+import { createClient } from '@/utils/supabase/client';
+import * as templateApi from '@/services/api/templates';
+import type { TemplateData } from '@/services/api/templates';
+
+// Define el tipo para una plantilla en Supabase
+interface TemplateDbData {
+  id: string;
+  name: string;
+  description?: string | null;
+  config: TemplateConfig | null;
+  html_content?: string | null;
+  css_content?: string | null;
+  js_content?: string | null;
+  event_type?: string | null;
+  is_active?: boolean | null;
+  created_at?: string;
+  updated_at?: string;
+  thumbnail_url?: string | null;
+  category?: string | null;
+  status?: string | null;
+  slug: string;
+}
 
 /**
  * Página de administración para editar o crear una plantilla
- * Versión temporal para desarrollo, sin integración real con Supabase
+ * Integra con el servicio de Supabase para guardar plantillas con enfoque basado en configuración
  */
 export default function TemplateEditorPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { user } = useUser();
   
-  // Referencias para evitar ciclos de renderizado
-  const idRef = useRef<string>(params.id);
-  const isNewTemplateRef = useRef<boolean>(params.id === 'new');
-  
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  // Estado de la página
+  const [status, setStatus] = useState<'loading' | 'ready' | 'saving' | 'error'>('loading');
   const [templateConfig, setTemplateConfig] = useState<TemplateConfig | null>(null);
+  const [templateData, setTemplateData] = useState<TemplateDbData | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
-  // Cargar la configuración de la plantilla si existe (mock para desarrollo)
+  // ¿Es una nueva plantilla?
+  const isNewTemplate = params.id === 'new';
+  
+  // Manejador centralizado de errores
+  const handleError = useCallback((error: any, title: string) => {
+    console.warn(`${title}:`, error);
+    
+    const message = error?.message || 'Ha ocurrido un error inesperado';
+    setErrorMessage(message);
+    setStatus('error');
+    
+    toast({
+      title,
+      description: message,
+      variant: 'destructive'
+    });
+  }, [toast]);
+  
+  // Cargar o crear plantilla al inicializar
   useEffect(() => {
-    // Esto solo debe ejecutarse una vez durante la carga inicial
-    const loadTemplate = async () => {
-      setLoading(true);
-      
+    // No hacer nada si user está loading
+    if (user === undefined) return;
+    
+    const initializeTemplate = async () => {
       try {
-        // Simulación de carga de datos
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        setStatus('loading');
+        const supabase = createClient();
         
-        // Crear una nueva plantilla vacía para desarrollo
-        const newConfig: TemplateConfig = {
-          id: isNewTemplateRef.current ? uuidv4() : idRef.current,
-          name: isNewTemplateRef.current ? 'Nueva Plantilla' : 'Plantilla Existente',
-          description: 'Descripción de la plantilla para desarrollo',
-          theme: { ...defaultTheme },
-          components: []
-        };
-        
-        setTemplateConfig(newConfig);
-        
-        // Si es una plantilla nueva, actualizar la URL sin recargar
-        if (isNewTemplateRef.current) {
-          const newUrl = `/admin/templates/editor/${newConfig.id}`;
-          window.history.replaceState({}, '', newUrl);
-          idRef.current = newConfig.id;
-          isNewTemplateRef.current = false;
+        if (isNewTemplate) {
+          // Crear nueva plantilla temporal usando la API directamente
+          if (!user?.id) {
+            throw new Error('Debes iniciar sesión para crear plantillas');
+          }
+          
+          // Crear una plantilla temporal
+          const tempTemplate = {
+            id: crypto.randomUUID(),
+            name: 'Nueva Plantilla',
+            description: 'Descripción de la plantilla',
+            slug: `nueva-plantilla-${Date.now()}`,
+            thumbnail_url: '/placeholder.svg',
+            config: {
+              id: crypto.randomUUID(),
+              name: 'Nueva Plantilla',
+              description: 'Descripción de la plantilla',
+              theme: { ...defaultTheme },
+              components: [],
+              category: 'premium'
+            },
+            status: 'draft',
+            is_active: true,
+            event_type: 'generic',
+            category: 'premium',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          const { data, error } = await supabase
+            .from('templates')
+            .insert([tempTemplate])
+            .select('*')
+            .single();
+            
+          if (error) {
+            throw error;
+          }
+          
+          // Actualizar URL sin recargar la página
+          const newUrl = `/admin/templates/editor/${data.id}`;
+          router.replace(newUrl, { scroll: false });
+          
+          // Actualizar estado
+          setTemplateData(data);
+          setTemplateConfig(data.config);
+          setStatus('ready');
+        } else {
+          // Cargar plantilla existente
+          const { data, error } = await supabase
+            .from('templates')
+            .select('*')
+            .eq('id', params.id)
+            .single();
+          
+          if (error) {
+            console.warn('Error al cargar plantilla:', error);
+            
+            // Si la plantilla no existe, redirigir a la lista
+            if (error.code === 'PGRST116' || error.message?.includes('no rows')) {
+              toast({
+                title: 'Plantilla no encontrada',
+                description: 'La plantilla que intentas editar no existe o ha sido eliminada',
+                variant: 'destructive'
+              });
+              
+              // Redirigir tras un breve retraso
+              setTimeout(() => {
+                router.push('/admin/templates');
+              }, 1500);
+              
+              throw new Error('Plantilla no encontrada');
+            }
+            
+            throw error;
+          }
+          
+          // Verificar formato antiguo (migración pendiente)
+          if (!data.config && (data.html_content || data.css_content || data.js_content)) {
+            toast({
+              title: 'Formato antiguo detectado',
+              description: 'Esta plantilla está en formato antiguo y debe ser migrada',
+              variant: 'destructive'
+            });
+            
+            router.push(`/admin/templates/migration?id=${params.id}`);
+            throw new Error('Formato de plantilla antiguo detectado');
+          }
+          
+          // Manejar plantilla sin configuración
+          if (!data.config) {
+            // Crear una configuración básica
+            data.config = {
+              id: data.id, // Usar el mismo ID que la plantilla
+              name: data.name || 'Plantilla sin nombre',
+              description: data.description || '',
+              theme: { ...defaultTheme },
+              components: [],
+              category: data.category || 'premium'
+            };
+            
+            // Actualizar la plantilla con la nueva configuración
+            await supabase
+              .from('templates')
+              .update({ config: data.config })
+              .eq('id', params.id);
+          }
+          
+          // Actualizar estado
+          setTemplateData(data);
+          setTemplateConfig(data.config);
+          setStatus('ready');
         }
       } catch (error) {
-        console.error('Error al cargar la plantilla:', error);
-        toast({
-          title: "Error al cargar",
-          description: "No se pudo cargar la configuración de la plantilla",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+        handleError(error, 'Error al inicializar la plantilla');
       }
     };
     
-    loadTemplate();
-    // Including toast as dependency since it's used inside loadTemplate
-  }, [toast]);
+    initializeTemplate();
+  }, [params.id, user, router, toast, handleError, isNewTemplate]);
   
-  // Guardar la plantilla (simulación para desarrollo)
+  // Guardar la plantilla
   const handleSave = async (config: TemplateConfig) => {
-    if (saving) return; // Prevenir guardados simultáneos
-    
-    setSaving(true);
-    console.log('Guardando configuración de plantilla:', config);
-    
     try {
-      // Generar HTML, CSS y JS a partir de la configuración
-      const { html, css, js } = generateCode(config);
-      console.log('Código generado:', { html, css, js });
+      if (status === 'saving') return;
       
-      // Simular guardado - Aquí se enviaría a Supabase en la versión final
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      setStatus('saving');
+      const supabase = createClient();
       
-      console.log('Plantilla guardada exitosamente');
-      toast({
-        title: "Guardado exitoso",
-        description: "La plantilla y su código generado se han guardado correctamente",
-      });
+      // Asegurarse de que los datos de la plantilla existen
+      if (!templateData) {
+        throw new Error('No hay datos de plantilla disponibles para guardar');
+      }
       
-      // Actualizar el estado local con la configuración guardada
+      // Preparar datos para actualización
+      const updateData = {
+        name: config.name,
+        description: config.description || '',
+        config: config,
+        status: 'published', // Marcar como publicada al guardar
+        category: config.category || 'premium',
+        event_type: config.eventType || 'otro',
+        updated_at: new Date().toISOString()
+      };
+      
+      // Actualizar la plantilla
+      const { data, error } = await supabase
+        .from('templates')
+        .update(updateData)
+        .eq('id', templateData.id)
+        .select()
+        .single();
+        
+      if (error) {
+        throw error;
+      }
+      
+      // Actualizar estado local
+      setTemplateData(data);
       setTemplateConfig(config);
-    } catch (error) {
-      console.error('Error al generar el código:', error);
+      
       toast({
-        title: "Error al guardar",
-        description: "Hubo un problema al generar el código de la plantilla",
-        variant: "destructive"
+        title: 'Guardado exitoso',
+        description: 'La plantilla se ha guardado correctamente'
       });
-    } finally {
-      setSaving(false);
+      
+      setStatus('ready');
+    } catch (error) {
+      handleError(error, 'Error al guardar la plantilla');
     }
   };
   
@@ -112,18 +254,37 @@ export default function TemplateEditorPage() {
     router.push('/admin/templates');
   };
   
-  if (loading) {
+  // Renderizado basado en el estado actual
+  if (status === 'loading') {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin" size={32} />
+        <Loader2 className="animate-spin mr-2" size={24} />
+        <span>Cargando plantilla...</span>
       </div>
     );
   }
   
-  if (!templateConfig) {
+  if (status === 'error') {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen">
-        <h1 className="text-2xl font-bold mb-4">Plantilla no encontrada</h1>
+        <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-4 max-w-md text-center">
+          <h2 className="text-lg font-bold">Error</h2>
+          <p>{errorMessage || 'Ha ocurrido un error al cargar la plantilla'}</p>
+        </div>
+        <button
+          className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/80"
+          onClick={handleBack}
+        >
+          Volver a la lista de plantillas
+        </button>
+      </div>
+    );
+  }
+  
+  if (!templateConfig || !templateData) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h1 className="text-2xl font-bold mb-4">Plantilla no disponible</h1>
         <button
           className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/80"
           onClick={handleBack}
@@ -134,12 +295,54 @@ export default function TemplateEditorPage() {
     );
   }
   
+  // Crear un objeto invitation para pasarlo al TemplateEditor
+  const mockInvitation: Invitation = {
+    id: templateData.id,
+    status: InvitationStatus.DRAFT,
+    createdAt: templateData.created_at || new Date().toISOString(),
+    updatedAt: templateData.updated_at || new Date().toISOString(),
+    userId: '',
+    packageType: PackageType.BASIC,
+    // Crear un objeto InvitationConfig con los datos mínimos necesarios
+    config: {
+      title: templateData.name || 'Plantilla',
+      eventDate: new Date().toISOString().split('T')[0],
+      eventTime: '12:00',
+      location: 'Ubicación del evento',
+      eventType: EventType.OTHER,
+      hostNames: ['Anfitrión'],
+      rsvpEnabled: false,
+      templateId: templateData.id,
+      // Colores y fuente por defecto para la invitación
+      theme: {
+        primaryColor: '#6366f1',
+        secondaryColor: '#f43f5e',
+        fontFamily: 'Inter'
+      },
+      components: {
+        countdown: true,
+        map: true,
+        gallery: false,
+        music: false,
+        gifts: false,
+        itinerary: false,
+        accommodation: false
+      }
+    }
+  };
+
   return (
-    <TemplateEditor
-      initialConfig={templateConfig}
-      templateId={idRef.current}
-      onSave={handleSave}
-      onBack={handleBack}
-    />
+    <div className="flex flex-col space-y-4">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Editor de Plantilla</h1>
+        <Button variant="outline" onClick={handleBack}>Volver</Button>
+      </div>
+      
+      <TemplateEditor
+        invitation={mockInvitation}
+        onSave={handleSave}
+        isSaving={status === 'saving'}
+      />
+    </div>
   );
 }

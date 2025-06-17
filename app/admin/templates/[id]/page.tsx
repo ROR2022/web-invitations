@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Edit, Eye } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import InvitationPreview from "@/components/template-editor/InvitationPreview";
 
 // Acción del servidor para guardar la plantilla
 async function saveTemplate(formData: FormData) {
@@ -23,12 +24,10 @@ async function saveTemplate(formData: FormData) {
   const templateData = {
     name: formData.get("name") as string,
     event_type: formData.get("event_type") as string,
-    slug: formData.get("slug") as string,
-    thumbnail_url: formData.get("thumbnail_url") as string,
-    html_content: formData.get("html_content") as string,
-    css_content: formData.get("css_content") as string,
-    js_content: formData.get("js_content") as string,
-    is_active: formData.has("is_active"),
+    description: formData.get("description") as string || '',
+    thumbnail: formData.get("thumbnail") as string,
+    // Ahora usamos config como principal, pero mantenemos compatibilidad con campos antiguos
+    is_public: formData.has("is_public"),
   };
   
   // Paquetes seleccionados
@@ -137,6 +136,12 @@ export default async function TemplateEditPage(props: { params: Promise<{ id: st
     { value: "otro", label: "Otro" }
   ];
   
+  // Verificar si la plantilla usa el nuevo enfoque basado en config
+  const hasConfigFormat = templateData?.config && Object.keys(templateData.config).length > 0;
+  
+  // Mostrar advertencia si tiene HTML/CSS/JS pero no tiene configuración
+  const needsMigration = (templateData?.html || templateData?.css || templateData?.js) && !hasConfigFormat;
+  
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -151,7 +156,46 @@ export default async function TemplateEditPage(props: { params: Promise<{ id: st
             {isNewTemplate ? "Nueva Plantilla" : "Editar Plantilla"}
           </h1>
         </div>
+        
+        {!isNewTemplate && (
+          <div className="flex space-x-2">
+            <Link href={`/admin/templates/editor/${params.id}`} passHref>
+              <Button size="sm" variant="outline">
+                <Edit className="h-4 w-4 mr-1" />
+                Abrir en Editor
+              </Button>
+            </Link>
+            {hasConfigFormat && (
+              <Link href={`/templates/preview/${params.id}`} passHref>
+                <Button size="sm" variant="outline">
+                  <Eye className="h-4 w-4 mr-1" />
+                  Vista Previa
+                </Button>
+              </Link>
+            )}
+          </div>
+        )}
       </div>
+      
+      {needsMigration && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 rounded">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Esta plantilla usa el formato antiguo (HTML/CSS/JS) y debe ser migrada al nuevo formato basado en configuración.
+                <Link href="/admin/templates/migration" className="font-medium underline text-yellow-700 hover:text-yellow-600 ml-2">
+                  Ir a la herramienta de migración
+                </Link>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <form action={saveTemplate} className="space-y-8">
         <input type="hidden" name="id" value={params.id} />
@@ -159,7 +203,12 @@ export default async function TemplateEditPage(props: { params: Promise<{ id: st
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="basic">Información Básica</TabsTrigger>
-            <TabsTrigger value="content">Contenido HTML/CSS/JS</TabsTrigger>
+            {!hasConfigFormat && (
+              <TabsTrigger value="content">Contenido HTML/CSS/JS</TabsTrigger>
+            )}
+            {hasConfigFormat && (
+              <TabsTrigger value="preview">Vista Previa</TabsTrigger>
+            )}
             <TabsTrigger value="packages">Paquetes Asociados</TabsTrigger>
           </TabsList>
           
@@ -175,19 +224,6 @@ export default async function TemplateEditPage(props: { params: Promise<{ id: st
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="slug">Slug</Label>
-                <Input 
-                  id="slug" 
-                  name="slug" 
-                  placeholder="nombre-de-plantilla" 
-                  defaultValue={templateData?.slug || ""}
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="event_type">Tipo de Evento</Label>
                 <select
@@ -205,77 +241,124 @@ export default async function TemplateEditPage(props: { params: Promise<{ id: st
                   ))}
                 </select>
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Textarea 
+                id="description" 
+                name="description" 
+                placeholder="Describe brevemente esta plantilla..." 
+                defaultValue={templateData?.description || ""}
+                rows={3}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="thumbnail_url">URL de Thumbnail</Label>
+                <Label htmlFor="thumbnail">URL de Thumbnail</Label>
                 <Input 
-                  id="thumbnail_url" 
-                  name="thumbnail_url" 
+                  id="thumbnail" 
+                  name="thumbnail" 
                   placeholder="https://example.com/imagen.jpg" 
-                  defaultValue={templateData?.thumbnail_url || ""}
+                  defaultValue={templateData?.thumbnail || ""}
                   required
                 />
               </div>
+              <div className="flex items-center space-x-2 mt-8">
+                <Checkbox 
+                  id="is_public" 
+                  name="is_public" 
+                  defaultChecked={templateData?.is_public === true}
+                />
+                <Label htmlFor="is_public">Plantilla Pública</Label>
+              </div>
             </div>
             
-            {templateData?.thumbnail_url && (
+            {templateData?.thumbnail && (
               <div className="mt-4">
                 <p className="text-sm mb-2">Vista previa:</p>
-                <div className="relative h-40 w-64 rounded-md overflow-hidden">
+                <div className="relative h-40 w-64 rounded-md overflow-hidden border">
                   <Image 
-                    src={templateData.thumbnail_url}
+                    src={templateData.thumbnail}
                     alt="Vista previa"
                     fill
+                    sizes="(max-width: 640px) 100vw, 256px"
                     className="object-cover"
                   />
                 </div>
               </div>
             )}
-            
-            <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="is_active" 
-                name="is_active" 
-                defaultChecked={templateData?.is_active !== false}
-              />
-              <Label htmlFor="is_active">Activa</Label>
-            </div>
           </TabsContent>
           
-          <TabsContent value="content" className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="html_content">Contenido HTML</Label>
-              <Textarea 
-                id="html_content" 
-                name="html_content" 
-                placeholder="<div>Contenido HTML de la plantilla...</div>" 
-                defaultValue={templateData?.html_content || ""}
-                rows={10}
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="css_content">Contenido CSS</Label>
-              <Textarea 
-                id="css_content" 
-                name="css_content" 
-                placeholder="body { font-family: sans-serif; }" 
-                defaultValue={templateData?.css_content || ""}
-                rows={6}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="js_content">Contenido JavaScript</Label>
-              <Textarea 
-                id="js_content" 
-                name="js_content" 
-                placeholder="document.addEventListener('DOMContentLoaded', () => { ... });" 
-                defaultValue={templateData?.js_content || ""}
-                rows={6}
-              />
-            </div>
-          </TabsContent>
+          {!hasConfigFormat && (
+            <TabsContent value="content" className="space-y-6">
+              <div className="bg-amber-50 border-l-4 border-amber-500 p-4 text-sm text-amber-700 mb-4">
+                Este es el formato antiguo para almacenar plantillas. Considera migrar a la nueva arquitectura basada en configuración.
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="html_content">Contenido HTML</Label>
+                <Textarea 
+                  id="html_content" 
+                  name="html_content" 
+                  placeholder="<div>Contenido HTML de la plantilla...</div>" 
+                  defaultValue={templateData?.html || ""}
+                  rows={10}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="css_content">Contenido CSS</Label>
+                <Textarea 
+                  id="css_content" 
+                  name="css_content" 
+                  placeholder="body { font-family: sans-serif; }" 
+                  defaultValue={templateData?.css || ""}
+                  rows={6}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="js_content">Contenido JavaScript</Label>
+                <Textarea 
+                  id="js_content" 
+                  name="js_content" 
+                  placeholder="document.addEventListener('DOMContentLoaded', () => { ... });" 
+                  defaultValue={templateData?.js || ""}
+                  rows={6}
+                />
+              </div>
+            </TabsContent>
+          )}
+          
+          {hasConfigFormat && (
+            <TabsContent value="preview" className="space-y-6">
+              <div className="bg-blue-50 border-l-4 border-blue-500 p-4 text-sm text-blue-700 mb-4">
+                Esta plantilla usa el nuevo formato basado en configuración. Para modificar su contenido, usa el editor de plantillas.
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <div className="w-full max-w-2xl mx-auto bg-white shadow-sm rounded-md overflow-hidden border">
+                  {/* Renderizar una vista previa usando la configuración */}
+                  {templateData?.config && (
+                    <div className="h-[500px] overflow-auto">
+                      <InvitationPreview config={templateData.config} />
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div className="flex justify-center mt-4">
+                <Link href={`/admin/templates/editor/${params.id}`} passHref>
+                  <Button>
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar Plantilla
+                  </Button>
+                </Link>
+              </div>
+            </TabsContent>
+          )}
           
           <TabsContent value="packages" className="space-y-6">
             <div className="space-y-4">

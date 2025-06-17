@@ -37,6 +37,78 @@ interface TimeLeft {
   seconds: number;
 }
 
+// Función utilitaria para obtener la fecha predeterminada (34 días en el futuro)
+const getDefaultEventDate = (): string => {
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 34);
+  const result = defaultDate.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+  console.log('getDefaultEventDate() called in ConfigurableCountdown, returning:', result);
+  return result;
+};
+
+// Función para parsear fechas en diferentes formatos
+const parseEventDate = (dateString: string): Date => {
+  // Si no hay fecha o está vacía, usar fecha predeterminada (34 días en el futuro)
+  if (!dateString || dateString.trim() === '') {
+    return new Date(getDefaultEventDate());
+  }
+  
+  try {
+    let date: Date;
+    
+    // Verificar formato ISO (YYYY-MM-DD)
+    if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+      date = new Date(dateString);
+    }
+    // Verificar formato con barras invertidas o puntos (DD/MM/YYYY o DD.MM.YYYY)
+    else if (/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/.test(dateString)) {
+      const parts = dateString.split(/[\/.-]/);
+      // Asumimos formato DD/MM/YYYY (formato europeo/latino)
+      date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    }
+    // Verificar formatos en español con texto (Sábado 04 de mayo de 2025)
+    else if (/(\d{1,2})\s+de\s+([a-záéíóúü]+)(?:\s*,?\s*|\s+de\s+)(\d{4})/i.test(dateString)) {
+      const meses: Record<string, number> = {
+        'enero': 0, 'febrero': 1, 'marzo': 2, 'abril': 3, 'mayo': 4, 'junio': 5,
+        'julio': 6, 'agosto': 7, 'septiembre': 8, 'octubre': 9, 'noviembre': 10, 'diciembre': 11
+      };
+      
+      // Extraer números y mes del texto
+      const match = dateString.match(/(\d{1,2})\s+de\s+([a-záéíóúü]+)(?:\s*,?\s*|\s+de\s+)(\d{4})/i);
+      if (match) {
+        const dia = parseInt(match[1]);
+        const mes = match[2].toLowerCase();
+        const año = parseInt(match[3]);
+        
+        // Verificar si el mes está en nuestro diccionario
+        if (mes in meses) {
+          date = new Date(año, meses[mes as keyof typeof meses], dia);
+        } else {
+          // Si no reconocemos el mes, intentamos con el constructor estándar
+          date = new Date(dateString);
+        }
+      } else {
+        // Fallback al constructor estándar
+        date = new Date(dateString);
+      }
+    }
+    // Intento final con el constructor de Date
+    else {
+      date = new Date(dateString);
+    }
+    
+    // Verificar si la fecha es válida
+    if (isNaN(date.getTime())) {
+      throw new Error('Fecha inválida');
+    }
+    
+    return date;
+  } catch (error) {
+    console.error('Error parseando fecha:', error);
+    return new Date(getDefaultEventDate()); // Fecha predeterminada como fallback
+  }
+};
+
 const ConfigurableCountdown: React.FC<CountdownProps> = ({
   eventDate,
   eventTime,
@@ -50,6 +122,13 @@ const ConfigurableCountdown: React.FC<CountdownProps> = ({
   isEditing = false,
   onPropertyChange
 }) => {
+  // Debug: Imprimir los props que llegan al componente
+  console.log('ConfigurableCountdown props received:', { 
+    eventDate, 
+    isEditing,
+    defaultDate: getDefaultEventDate() 
+  });
+  
   // Estado para el tiempo restante
   const [timeLeft, setTimeLeft] = useState<TimeLeft>({
     days: 0,
@@ -61,12 +140,23 @@ const ConfigurableCountdown: React.FC<CountdownProps> = ({
   // Estado para controlar cuando el tiempo ha expirado
   const [isExpired, setIsExpired] = useState(false);
   
+  // FORZAR VALOR DE 34 DÍAS SI ES UNA FECHA ACTUAL (recién creado) o está vacío
+  useEffect(() => {
+    if (onPropertyChange && 
+        (!eventDate || 
+         eventDate === new Date().toISOString().split('T')[0] ||
+         eventDate === new Date(Date.now()).toISOString().split('T')[0])) {
+      console.log('Forzando cambio a fecha predeterminada de 34 días:', getDefaultEventDate());
+      onPropertyChange('eventDate', getDefaultEventDate());
+    }
+  }, [eventDate, onPropertyChange]);
+  
   // Calcular el tiempo restante
   useEffect(() => {
     // Si estamos en modo edición, mostrar un tiempo fijo
     if (isEditing) {
       setTimeLeft({
-        days: 45,
+        days: 34, // Cambiado para mantener consistencia con el valor predeterminado
         hours: 12,
         minutes: 30,
         seconds: 15
@@ -74,8 +164,28 @@ const ConfigurableCountdown: React.FC<CountdownProps> = ({
       return;
     }
     
-    // Crear fecha objetivo combinando fecha y hora
-    const targetDateTime = new Date(`${eventDate}T${eventTime || '00:00:00'}`);
+    // Usar fecha predeterminada si no hay eventDate
+    const dateToUse = eventDate || getDefaultEventDate();
+    console.log('Date being used:', { 
+      eventDate, 
+      dateToUse, 
+      isEmpty: !eventDate || eventDate.trim() === '',
+      defaultGenerated: getDefaultEventDate() 
+    });
+    
+    // Crear fecha objetivo parseando la fecha y agregando la hora
+    const parsedEventDate = parseEventDate(dateToUse);
+    
+    // Si tenemos una hora, la añadimos a la fecha
+    if (eventTime) {
+      const [hours, minutes, seconds] = (eventTime || '00:00:00').split(':').map(Number);
+      parsedEventDate.setHours(hours || 0);
+      parsedEventDate.setMinutes(minutes || 0);
+      parsedEventDate.setSeconds(seconds || 0);
+    }
+    
+    // Usar la fecha parseada como objetivo
+    const targetDateTime = parsedEventDate;
     
     const calculateTimeLeft = () => {
       const now = new Date();

@@ -47,7 +47,17 @@ const Navbar = () => {
       
       // Verificar si el usuario es admin (consultando metadata o rol)
       if (user) {
-        setIsAdmin(user.user_metadata?.role === 'admin')
+        const { data, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user role:', error);
+        return false;
+    }
+        setIsAdmin(data?.role === 'admin')
       }
     }
     
@@ -60,7 +70,7 @@ const Navbar = () => {
     })
     
     return () => subscription.unsubscribe()
-  }, [supabase.auth])
+  }, [supabase])
   
   // Función para cerrar sesión
   const handleSignOut = async () => {
@@ -79,7 +89,6 @@ const Navbar = () => {
         { href: '/faq', label: 'FAQ' },
       ]
     : [
-        { href: '/dashboard', label: 'Dashboard' },
         { href: '/invitaciones', label: 'Mis Invitaciones' },
         { href: '/crear-invitacion', label: 'Nueva Invitación' },
       ]

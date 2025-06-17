@@ -1,35 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as invitationService from "@/services/invitation.service";
+import { createClient } from '@/utils/supabase/server';
+
+// Helper to get the ID from the route or query params
+const getInvitationId = (request: NextRequest, params?: { id: string }) => {
+  // Try to get from route params first if available
+  if (params?.id && params.id !== 'route') {
+    return params.id;
+  }
+  
+  // Otherwise try from query params
+  const objUrl = request.nextUrl
+  const queryParams = objUrl.searchParams
+  const id = queryParams.get('id');
+  
+  if (!id) {
+    throw new Error("No se proporcionó un ID válido");
+  }
+  
+  return id;
+};
 
 export async function GET(
   request: NextRequest
-  ) {
+) {
   try {
-    //extraer los params del request
-    const objUrl = request.nextUrl
-    const params = objUrl.searchParams
-
-    const id = params.get('id');
+    const objUrl = request.nextUrl;
+    const params = objUrl.searchParams; 
+    const id = params.get('id') || '';
     
-    if (!id) {
-      return NextResponse.json(
-        { error: "No se proporcionó un ID válido" },
-        { status: 400 }
-      );
-    }
-    const { data, error } = await invitationService.getInvitation(id);
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (!user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    if (!data) {
-      return NextResponse.json({ error: "Invitación no encontrada" }, { status: 404 });
+    const result = await invitationService.getInvitationById(id, user.id);
+    
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
     }
     
-    return NextResponse.json({ data });
+    return NextResponse.json(result.data);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Error al obtener invitación" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -37,28 +52,26 @@ export async function PUT(
   request: NextRequest
 ) {
   try {
-    //extraer los params del  request
-    const objUrl = request.nextUrl
-    const params = objUrl.searchParams
-
-    const id = params.get('id');
+    const objUrl = request.nextUrl;
+    const params = objUrl.searchParams; 
+    const id = params.get('id') || '';
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!id) {
-      return NextResponse.json(
-        { error: "No se proporcionó un ID válido" },
-        { status: 400 }
-      );
-    }
-    const body = await request.json();
-    const { data, error } = await invitationService.updateInvitation(id, body);
-    
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (!user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    return NextResponse.json({ data });
+    const updates = await request.json();
+    const result = await invitationService.updateInvitation(id, user.id, updates);
+    
+    if (result.error) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    
+    return NextResponse.json(result.data);
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Error al actualizar invitación" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
 
@@ -66,26 +79,24 @@ export async function DELETE(
   request: NextRequest
 ) {
   try {
-    //extraer los params del   request
-    const objUrl = request.nextUrl
-    const params = objUrl.searchParams
-
-    const id = params.get('id');
+    const objUrl = request.nextUrl;
+    const params = objUrl.searchParams; 
+    const id = params.get('id') || '';
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!id) {
-      return NextResponse.json(
-        { error: "No se proporcionó un ID válido" },
-        { status: 400 }
-      );
-    }
-    const { error } = await invitationService.deleteInvitation(id);
-    
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (!user?.id) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
     
-    return NextResponse.json({ success: true });
+    const result = await invitationService.deleteInvitation(id, user.id);
+    
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Error al eliminar invitación" }, { status: 500 });
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

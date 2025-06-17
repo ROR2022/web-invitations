@@ -52,7 +52,7 @@ interface ResourceGalleryProps {
  * Componente para mostrar y gestionar recursos de imágenes
  */
 const ResourceGallery: React.FC<ResourceGalleryProps> = ({
-  bucketName = 'invitation-resources',
+  bucketName = 'invitations-media',
   folderPath = 'images',
   onSelectResource,
   selectedResourceUrl,
@@ -66,12 +66,13 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [uploaderOpen, setUploaderOpen] = useState(false);
   const [selectedResource, setSelectedResource] = useState<ResourceInfo | null>(null);
-  const supabase = createClient();
+  
   
   // Cargar recursos
   const loadResources = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const supabase = createClient();
     
     try {
       const path = folderPath ? `${folderPath}/` : '';
@@ -92,7 +93,7 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
           .map(async (item) => {
             const filePath = `${path}${item.name}`;
             const { data: { publicUrl } } = supabase.storage
-              .from(bucketName)
+              .from('invitations-media')
               .getPublicUrl(filePath);
             
             return {
@@ -115,7 +116,7 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [bucketName, folderPath, supabase.storage]);
+  }, [bucketName, folderPath]);
   
   // Efecto para cargar recursos al montar el componente
   useEffect(() => {
@@ -151,7 +152,7 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
     if (!confirm(`¿Estás seguro de que quieres eliminar "${resource.name}"?`)) {
       return;
     }
-    
+    const supabase = createClient();
     try {
       const path = folderPath ? `${folderPath}/${resource.name}` : resource.name;
       
@@ -284,9 +285,9 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
   };
   
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Cabecera con controles */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex-shrink-0 flex items-center justify-between mb-4">
         <div className="flex items-center space-x-2 flex-1">
           <div className="relative flex-1">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -347,28 +348,20 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
         </div>
       </div>
       
-      {/* Estado de carga */}
-      {loading && (
+      {/* Estados de carga, error, sin recursos */}
+      {loading ? (
         <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="mt-2 text-sm text-muted-foreground">Cargando recursos...</p>
-          </div>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="ml-2 text-sm text-muted-foreground">Cargando recursos...</p>
         </div>
-      )}
-      
-      {/* Mensaje de error */}
-      {error && !loading && (
+      ) : error ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-500 mb-2">{error}</p>
             <Button onClick={loadResources}>Reintentar</Button>
           </div>
         </div>
-      )}
-      
-      {/* Sin resultados */}
-      {!loading && !error && filteredResources.length === 0 && (
+      ) : filteredResources.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground mb-3" />
@@ -388,21 +381,19 @@ const ResourceGallery: React.FC<ResourceGalleryProps> = ({
             )}
           </div>
         </div>
-      )}
-      
-      {/* Galería de recursos */}
-      {!loading && !error && filteredResources.length > 0 && (
-        <ScrollArea className="flex-1">
-          <div className={`
-            ${viewMode === 'grid' 
-              ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3' 
+      ) : (
+        /* Implementación directa de scroll sin ScrollArea component */
+        <div className="flex-1 overflow-auto pr-2">
+          <div 
+            className={viewMode === 'grid' 
+              ? 'grid grid-cols-2 sm:grid-cols-3 gap-4' 
               : 'space-y-2'
             }
-            pb-8
-          `}>
+          >
             {filteredResources.map(resource => renderResourceCard(resource))}
           </div>
-        </ScrollArea>
+          <div className="h-6"></div> {/* Espacio al final para scroll */}
+        </div>
       )}
     </div>
   );

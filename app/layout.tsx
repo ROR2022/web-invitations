@@ -4,7 +4,18 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster"
 import CookieBanner from '@/components/CookieBanner'
 import { Providers } from '@/app/providers'
-import { Playfair_Display, Great_Vibes } from "next/font/google"
+import { 
+  Playfair_Display, 
+  Great_Vibes,
+  Montserrat,
+  Roboto,
+  Lora,
+  Dancing_Script,
+  Pacifico,
+  Open_Sans,
+  Oswald,
+  Merriweather
+} from "next/font/google"
 import ConditionalLayout from '@/components/ConditionalLayout';
 
 const defaultUrl = process.env.VERCEL_URL
@@ -28,6 +39,48 @@ const greatVibes = Great_Vibes({
   variable: "--font-great-vibes",
 })
 
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+})
+
+const roboto = Roboto({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-roboto",
+})
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-lora",
+})
+
+const dancingScript = Dancing_Script({
+  subsets: ["latin"],
+  variable: "--font-dancing-script",
+})
+
+const pacifico = Pacifico({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-pacifico",
+})
+
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  variable: "--font-open-sans",
+})
+
+const oswald = Oswald({
+  subsets: ["latin"],
+  variable: "--font-oswald",
+})
+
+const merriweather = Merriweather({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+  variable: "--font-merriweather",
+})
 
 const geistSans = Geist({
   display: 'swap',
@@ -41,7 +94,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${playfair.variable} ${greatVibes.variable} font-serif`}>
+      <body className={`${playfair.variable} ${greatVibes.variable} ${montserrat.variable} ${roboto.variable} ${lora.variable} ${dancingScript.variable} ${pacifico.variable} ${openSans.variable} ${oswald.variable} ${merriweather.variable} font-serif`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

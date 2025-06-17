@@ -22,16 +22,8 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical } from 'lucide-react';
 
-interface ComponentTypeNames {
-  hero?: string;
-  countdown?: string;
-  eventDetails?: string;
-  gallery?: string;
-  attendance?: string;
-  giftOptions?: string;
-  musicPlayer?: string;
-  thankYou?: string;
-}
+// Usar Record para permitir indexación con string y asegurar typesafety
+type ComponentTypeNames = Record<string, string>;
 
 const componentTypeNames: ComponentTypeNames = {
   hero: 'Héroe/Portada',
@@ -41,7 +33,9 @@ const componentTypeNames: ComponentTypeNames = {
   attendance: 'Formulario de Asistencia',
   giftOptions: 'Mesa de Regalos',
   musicPlayer: 'Reproductor de Música',
-  thankYou: 'Agradecimiento'
+  thankYou: 'Agradecimiento',
+  invitation: 'Invitación Formal',
+  couple: 'Nosotros'
 };
 
 // Componente que representa un elemento arrastrable individual
@@ -70,9 +64,9 @@ function SortableItem({ component, isSelected, onSelect }: SortableItemProps) {
       ref={setNodeRef}
       style={style}
       className={`
-        p-3 rounded border cursor-pointer flex items-center justify-between mb-2
-        ${component.visible ? 'bg-white' : 'bg-gray-100 opacity-60'}
-        ${isSelected ? 'ring-2 ring-primary' : 'hover:bg-gray-50'}
+        p-2 border-b cursor-pointer flex items-center justify-between
+        ${component.visible ? '' : 'opacity-60'}
+        ${isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-gray-50'}
       `}
       onClick={() => onSelect(component.id)}
       onKeyDown={(e) => {
@@ -84,31 +78,24 @@ function SortableItem({ component, isSelected, onSelect }: SortableItemProps) {
       role="button"
       tabIndex={0}
     >
-      <span className="flex items-center flex-1">
+      <span className="flex items-center flex-1 text-sm">
         <span 
           className={`w-2 h-2 rounded-full mr-2 ${component.visible ? 'bg-green-500' : 'bg-gray-400'}`}
+          title={component.visible ? 'Visible' : 'Oculto'}
         ></span>
-        <span className="flex-1">{componentTypeNames[component.type] || component.type}</span>
+        <span className="flex-1 truncate">
+          {componentTypeNames[component.type] || component.type}
+        </span>
       </span>
       
-      <div className="flex items-center">
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="h-7 px-2 mr-1 text-xs font-normal hover:bg-primary/10 hover:text-primary"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(component.id);
-          }}
-        >
-          Editar
-        </Button>
+      <div className="flex items-center space-x-1">
         <div
           {...attributes}
           {...listeners}
-          className="cursor-grab p-1 hover:bg-gray-100 rounded mr-1"
+          className="cursor-grab p-1 hover:bg-gray-100 rounded-sm"
+          title="Arrastrar para reordenar"
         >
-          <GripVertical size={16} />
+          <GripVertical size={14} className="text-gray-400" />
         </div>
       </div>
     </div>

@@ -1,0 +1,103 @@
+/* Estilos para componentes optimizados */
+
+/* Placeholder para carga diferida */
+.lazy-loading-placeholder {
+  width: 50%;
+  height: 10px;
+  background: linear-gradient(90deg, #f0f0f0, #e0e0e0, #f0f0f0);
+  background-size: 200% 100%;
+  border-radius: 4px;
+  animation: shimmer 1.5s infinite;
+}
+
+/* Animación de shimmer para placeholders */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Estilos para imágenes con carga diferida */
+.lazy-image-container {
+  position: relative;
+  overflow: hidden;
+  background-color: #f0f0f0;
+  transform: translateZ(0); /* Activar aceleración por hardware */
+}
+
+.lazy-image {
+  will-change: opacity; /* Optimizar para animaciones */
+  backface-visibility: hidden; /* Mejorar rendimiento */
+  -webkit-backface-visibility: hidden;
+}
+
+.lazy-image-placeholder {
+  position: relative;
+}
+
+.lazy-image-placeholder::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Transiciones optimizadas */
+.optimized-transition {
+  will-change: transform, opacity; /* Optimizar para animaciones */
+  transform: translateZ(0); /* Activar aceleración por hardware */
+}
+
+/* Renderizado condicional */
+.lazy-render {
+  min-height: 50px;
+  position: relative;
+}
+
+/* Media queries para optimización en diferentes dispositivos */
+@media (max-width: 640px) {
+  /* Ajustes para teléfonos pequeños */
+  .lazy-loading-placeholder {
+    height: 8px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  /* Ajustes para tablets y teléfonos grandes */
+  .lazy-loading-placeholder {
+    height: 10px;
+  }
+}
+
+@media (min-width: 1025px) {
+  /* Ajustes para escritorio */
+  .lazy-loading-placeholder {
+    height: 12px;
+  }
+}
+
+/* Optimizaciones para dispositivos con preferencia de movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+  .lazy-loading-placeholder,
+  .lazy-image-placeholder::after {
+    animation: none !important;
+  }
+  
+  .optimized-transition {
+    transition: none !important;
+  }
+}

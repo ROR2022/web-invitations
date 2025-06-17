@@ -23,7 +23,9 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   return (
     <>
       <Navbar />
-      <div className="flex flex-col md:gap-20 gap-12 w-full md:max-w-5xl px-4 sm:px-5 mx-auto">
+      <div className="flex flex-col md:gap-20 gap-12 w-full px-4 sm:px-5 mx-auto"
+      style={{width:'90vw'}}
+      >
         {children}
       </div>
       <Footer />

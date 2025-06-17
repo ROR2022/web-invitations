@@ -44,7 +44,7 @@ interface ResourceInfo {
 const ResourceSelector: React.FC<ResourceSelectorProps> = ({
   value,
   onChange,
-  bucketName = 'invitation-resources',
+  bucketName = 'invitations-media',
   folderPath = 'images',
   label = 'Imagen',
   aspectRatio
@@ -85,7 +85,9 @@ const ResourceSelector: React.FC<ResourceSelectorProps> = ({
           <div className="relative mb-2">
             <div className={`border rounded-md overflow-hidden ${aspectRatio ? `aspect-[${aspectRatio}]` : 'aspect-square'} relative`}>
               <Image
-                src={value}
+                src={typeof value === 'string' && (value.startsWith('/') || value.startsWith('http')) 
+                  ? value 
+                  : '/placeholder.svg'}
                 alt={label}
                 fill
                 sizes="(max-width: 768px) 100vw, 300px"
@@ -128,22 +130,26 @@ const ResourceSelector: React.FC<ResourceSelectorProps> = ({
               {value ? 'Cambiar imagen' : 'Seleccionar imagen'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh]">
-            <DialogHeader>
+          <DialogContent className="sm:max-w-[800px] h-[90vh] p-6 flex flex-col">
+            <DialogHeader className="mb-4 pb-2 border-b">
               <DialogTitle>Seleccionar imagen</DialogTitle>
               <DialogDescription>
                 Elige una imagen de tu biblioteca o sube una nueva.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="h-[500px] flex flex-col">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-                <TabsList className="mb-4 grid grid-cols-2">
-                  <TabsTrigger value="gallery">Biblioteca</TabsTrigger>
-                  <TabsTrigger value="upload">Subir nueva</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="gallery" className="flex-1 flex">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
+              <TabsList className="mb-4 grid grid-cols-2">
+                <TabsTrigger value="gallery">Biblioteca</TabsTrigger>
+                <TabsTrigger value="upload">Subir nueva</TabsTrigger>
+              </TabsList>
+              
+              <div className="flex-1 relative" style={{ height: "calc(100% - 50px)" }}>
+                <TabsContent 
+                  value="gallery" 
+                  className="absolute inset-0 overflow-hidden"
+                  style={{ visibility: activeTab === 'gallery' ? 'visible' : 'hidden' }}
+                >
                   <ResourceGallery
                     bucketName={bucketName}
                     folderPath={folderPath}
@@ -153,19 +159,21 @@ const ResourceSelector: React.FC<ResourceSelectorProps> = ({
                   />
                 </TabsContent>
                 
-                <TabsContent value="upload" className="flex-1 flex items-center">
-                  <div className="w-full px-4">
-                    <ImageUploader
-                      bucketName={bucketName}
-                      folderPath={folderPath}
-                      onUploadComplete={handleUploadComplete}
-                    />
-                  </div>
+                <TabsContent 
+                  value="upload" 
+                  className="absolute inset-0 flex items-center justify-center"
+                  style={{ visibility: activeTab === 'upload' ? 'visible' : 'hidden' }}
+                >
+                  <ImageUploader
+                    bucketName={bucketName}
+                    folderPath={folderPath}
+                    onUploadComplete={handleUploadComplete}
+                  />
                 </TabsContent>
-              </Tabs>
-            </div>
+              </div>
+            </Tabs>
             
-            <DialogFooter>
+            <DialogFooter className="mt-4 pt-2 border-t">
               <Button 
                 variant="outline" 
                 onClick={() => setDialogOpen(false)}

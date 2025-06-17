@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Editor Wireframe</title>
+  <link rel="stylesheet" href="mobile-editor-wireframes.css">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f9fafb;
+      color: #333;
+    }
+    
+    .wireframe-container {
+      max-width: 375px;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      overflow: hidden;
+      background: white;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      height: 667px;
+      position: relative;
+    }
+    
+    .wireframe-title {
+      text-align: center;
+      font-size: 1.2rem;
+      margin: 1rem 0;
+      color: #555;
+    }
+    
+    /* Example component styles for preview */
+    .example-hero {
+      height: 220px;
+      background-color: #333;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 0 16px;
+      background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('https://via.placeholder.com/400x220');
+      background-size: cover;
+      background-position: center;
+    }
+    
+    .example-hero h1 {
+      font-size: 32px;
+      margin: 0 0 8px 0;
+    }
+    
+    .example-hero p {
+      font-size: 16px;
+      margin: 0;
+      opacity: 0.9;
+    }
+    
+    .example-hero .name {
+      font-size: 24px;
+      margin-top: 12px;
+      font-style: italic;
+    }
+    
+    .example-event-details {
+      padding: 24px 16px;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .example-event-details h2 {
+      margin: 0 0 16px 0;
+      font-size: 20px;
+      text-align: center;
+    }
+    
+    .detail-row {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    
+    .detail-icon {
+      width: 24px;
+      height: 24px;
+      margin-right: 12px;
+      background: #f3f4f6;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .detail-text {
+      flex: 1;
+    }
+    
+    .example-countdown {
+      padding: 24px 16px;
+      text-align: center;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .example-countdown h2 {
+      margin: 0 0 16px 0;
+      font-size: 20px;
+    }
+    
+    .countdown-digits {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    
+    .countdown-item {
+      background: #f3f4f6;
+      border-radius: 8px;
+      padding: 8px 12px;
+      min-width: 60px;
+    }
+    
+    .countdown-number {
+      font-size: 24px;
+      font-weight: bold;
+    }
+    
+    .countdown-label {
+      font-size: 12px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <div class="wireframe-title">Normal Viewing Mode</div>
+  <div class="wireframe-container">
+    <!-- Normal view of the invitation -->
+    <div class="example-hero">
+      <p>Te invito a celebrar conmigo</p>
+      <h1>Mis XV Años</h1>
+      <div class="name">Ana Sofía</div>
+    </div>
+    
+    <div class="example-event-details">
+      <h2>Detalles del Evento</h2>
+      <div class="detail-row">
+        <div class="detail-icon">📅</div>
+        <div class="detail-text">Sábado 20 de Julio, 2025</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">⏰</div>
+        <div class="detail-text">18:00 horas</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">📍</div>
+        <div class="detail-text">Salón Imperial, Av. Las Flores 123</div>
+      </div>
+    </div>
+    
+    <div class="example-countdown">
+      <h2>Cuenta Regresiva</h2>
+      <div class="countdown-digits">
+        <div class="countdown-item">
+          <div class="countdown-number">37</div>
+          <div class="countdown-label">Días</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">08</div>
+          <div class="countdown-label">Horas</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">42</div>
+          <div class="countdown-label">Min</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">15</div>
+          <div class="countdown-label">Seg</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="wireframe-title">Edit Mode Active</div>
+  <div class="wireframe-container">
+    <!-- Edit mode - with edit indicators -->
+    <div class="example-hero editable-component">
+      <p>Te invito a celebrar conmigo</p>
+      <h1>Mis XV Años</h1>
+      <div class="name">Ana Sofía</div>
+      <div class="edit-indicator">✏️</div>
+    </div>
+    
+    <div class="example-event-details editable-component selected">
+      <h2>Detalles del Evento</h2>
+      <div class="detail-row">
+        <div class="detail-icon">📅</div>
+        <div class="detail-text">Sábado 20 de Julio, 2025</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">⏰</div>
+        <div class="detail-text">18:00 horas</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">📍</div>
+        <div class="detail-text">Salón Imperial, Av. Las Flores 123</div>
+      </div>
+      <div class="edit-indicator">✏️</div>
+    </div>
+    
+    <div class="example-countdown editable-component">
+      <h2>Cuenta Regresiva</h2>
+      <div class="countdown-digits">
+        <div class="countdown-item">
+          <div class="countdown-number">37</div>
+          <div class="countdown-label">Días</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">08</div>
+          <div class="countdown-label">Horas</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">42</div>
+          <div class="countdown-label">Min</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">15</div>
+          <div class="countdown-label">Seg</div>
+        </div>
+      </div>
+      <div class="edit-indicator">✏️</div>
+    </div>
+    
+    <button class="edit-mode-toggle">✏️</button>
+  </div>
+  
+  <div class="wireframe-title">Edit Modal Open</div>
+  <div class="wireframe-container">
+    <!-- Edit mode with modal open -->
+    <div class="example-hero editable-component">
+      <p>Te invito a celebrar conmigo</p>
+      <h1>Mis XV Años</h1>
+      <div class="name">Ana Sofía</div>
+    </div>
+    
+    <div class="example-event-details editable-component selected">
+      <h2>Detalles del Evento</h2>
+      <div class="detail-row">
+        <div class="detail-icon">📅</div>
+        <div class="detail-text">Sábado 20 de Julio, 2025</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">⏰</div>
+        <div class="detail-text">18:00 horas</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">📍</div>
+        <div class="detail-text">Salón Imperial, Av. Las Flores 123</div>
+      </div>
+    </div>
+    
+    <div class="example-countdown editable-component">
+      <h2>Cuenta Regresiva</h2>
+      <div class="countdown-digits">
+        <div class="countdown-item">
+          <div class="countdown-number">37</div>
+          <div class="countdown-label">Días</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">08</div>
+          <div class="countdown-label">Horas</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">42</div>
+          <div class="countdown-label">Min</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">15</div>
+          <div class="countdown-label">Seg</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="modal-backdrop"></div>
+    
+    <div class="mobile-edit-modal">
+      <div class="modal-header">
+        <div class="modal-title">Editar Detalles del Evento</div>
+        <button class="close-button">✕</button>
+      </div>
+      
+      <div class="component-preview">
+        <!-- Simplified preview of the component being edited -->
+        <div style="padding: 12px;">
+          <h2 style="text-align: center; margin-bottom: 12px;">Detalles del Evento</h2>
+          <div style="margin-bottom: 8px;">📅 Sábado 20 de Julio, 2025</div>
+          <div style="margin-bottom: 8px;">⏰ 18:00 horas</div>
+          <div>📍 Salón Imperial, Av. Las Flores 123</div>
+        </div>
+      </div>
+      
+      <div class="property-editor">
+        <div class="property-control">
+          <div class="property-label">Título</div>
+          <div class="text-control">
+            <input type="text" value="Detalles del Evento">
+          </div>
+        </div>
+        
+        <div class="property-control">
+          <div class="property-label">Fecha</div>
+          <div class="text-control">
+            <input type="date" value="2025-07-20">
+          </div>
+        </div>
+        
+        <div class="property-control">
+          <div class="property-label">Hora</div>
+          <div class="text-control">
+            <input type="time" value="18:00">
+          </div>
+        </div>
+        
+        <div class="property-control">
+          <div class="property-label">Ubicación</div>
+          <div class="text-control">
+            <input type="text" value="Salón Imperial, Av. Las Flores 123">
+          </div>
+        </div>
+        
+        <div class="property-control">
+          <div class="toggle-control">
+            <div class="property-label">Mostrar Mapa</div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="cancel-button">Cancelar</button>
+        <button class="save-button">Guardar Cambios</button>
+      </div>
+    </div>
+  </div>
+  
+  <div class="wireframe-title">Success Indicator</div>
+  <div class="wireframe-container">
+    <!-- Success message after saving -->
+    <div class="example-hero editable-component">
+      <p>Te invito a celebrar conmigo</p>
+      <h1>Mis XV Años</h1>
+      <div class="name">Ana Sofía</div>
+      <div class="edit-indicator">✏️</div>
+    </div>
+    
+    <div class="example-event-details editable-component">
+      <h2>Detalles del Evento</h2>
+      <div class="detail-row">
+        <div class="detail-icon">📅</div>
+        <div class="detail-text">Sábado 20 de Julio, 2025</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">⏰</div>
+        <div class="detail-text">18:00 horas</div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-icon">📍</div>
+        <div class="detail-text">Salón Imperial, Av. Las Flores 123</div>
+      </div>
+      <div class="edit-indicator">✏️</div>
+    </div>
+    
+    <div class="example-countdown editable-component">
+      <h2>Cuenta Regresiva</h2>
+      <div class="countdown-digits">
+        <div class="countdown-item">
+          <div class="countdown-number">37</div>
+          <div class="countdown-label">Días</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">08</div>
+          <div class="countdown-label">Horas</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">42</div>
+          <div class="countdown-label">Min</div>
+        </div>
+        <div class="countdown-item">
+          <div class="countdown-number">15</div>
+          <div class="countdown-label">Seg</div>
+        </div>
+      </div>
+      <div class="edit-indicator">✏️</div>
+    </div>
+    
+    <button class="edit-mode-toggle">✏️</button>
+    
+    <div class="success-indicator">
+      ✓ Cambios guardados correctamente
+    </div>
+  </div>
+</body>
+</html>

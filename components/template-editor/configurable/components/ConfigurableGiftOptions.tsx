@@ -35,27 +35,27 @@ export type GiftOptionsProps = {
 const registryInfo = {
   liverpool: {
     name: 'Liverpool',
-    logo: '/images/registries/liverpool.png',
+    logo: '/placeholder.svg',
     url: 'https://www.liverpool.com.mx/tienda/mesa-de-regalos/'
   },
   amazon: {
     name: 'Amazon',
-    logo: '/images/registries/amazon.png',
+    logo: '/placeholder.svg',
     url: 'https://www.amazon.com.mx/gp/wedding/homepage'
   },
   palacio: {
     name: 'Palacio de Hierro',
-    logo: '/images/registries/palacio.png',
+    logo: '/placeholder.svg',
     url: 'https://www.elpalaciodehierro.com/mesa-de-regalos/busqueda.html'
   },
   sears: {
     name: 'Sears',
-    logo: '/images/registries/sears.png',
+    logo: '/placeholder.svg',
     url: 'https://www.sears.com.mx/Mesa-de-Regalos/'
   },
   other: {
     name: 'Otra tienda',
-    logo: '/images/registries/gift.png',
+    logo: '/placeholder.svg',
     url: '#'
   }
 };
@@ -190,7 +190,9 @@ const ConfigurableGiftOptions: React.FC<GiftOptionsProps> = ({
                       >
                         <div className="w-10 h-10 flex items-center justify-center mr-3">
                           <Image 
-                            src={registryData.logo} 
+                            src={typeof registryData.logo === 'string' && (registryData.logo.startsWith('/') || registryData.logo.startsWith('http')) 
+                              ? registryData.logo 
+                              : '/placeholder.svg'}
                             alt={registryData.name}
                             width={40}
                             height={40}

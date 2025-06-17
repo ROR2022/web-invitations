@@ -1,0 +1,178 @@
+/* Additional CSS for Phase 5 network optimization components */
+
+/* Network quality indicator */
+.network-quality-indicator {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.network-quality-indicator.slow {
+  background-color: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.network-quality-indicator.medium {
+  background-color: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.network-quality-indicator.fast {
+  background-color: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.network-dots {
+  display: flex;
+  gap: 2px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.dot.active {
+  background-color: #10b981;
+}
+
+.network-quality-indicator.slow .dot.active {
+  background-color: #ef4444;
+}
+
+.network-quality-indicator.medium .dot.active {
+  background-color: #f59e0b;
+}
+
+.quality-text {
+  font-weight: 500;
+}
+
+.network-quality-indicator.slow .quality-text {
+  color: #ef4444;
+}
+
+.network-quality-indicator.medium .quality-text {
+  color: #f59e0b;
+}
+
+.network-quality-indicator.fast .quality-text {
+  color: #10b981;
+}
+
+/* Resource loading indicator */
+.resource-loading-indicator {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  animation: fadeInDown 0.3s ease-out;
+}
+
+.resource-loading-indicator .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 2px solid #9333ea;
+  animation: spinner 1s linear infinite;
+}
+
+.resource-loading-indicator .loading-text {
+  color: #6b21a8;
+}
+
+.resource-loading-indicator.mobile-loading {
+  top: auto;
+  bottom: 16px;
+  left: 16px;
+  right: auto;
+}
+
+/* Network error fallback */
+.network-error-fallback {
+  padding: 30px;
+  background-color: #fef2f2;
+  border-radius: 8px;
+  text-align: center;
+  margin: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.network-error-fallback h3 {
+  color: #ef4444;
+  margin: 8px 0;
+  font-size: 18px;
+}
+
+.network-error-fallback p {
+  color: #666;
+  font-size: 14px;
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+.network-error-fallback svg {
+  color: #ef4444;
+}
+
+/* Network loading indicator */
+.network-loading {
+  padding: 30px;
+  text-align: center;
+  margin: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.network-loading .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top: 3px solid #9333ea;
+  animation: spinner 1s linear infinite;
+}
+
+.network-loading p {
+  color: #6b21a8;
+  font-size: 14px;
+}
+
+/* Fade in down animation */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

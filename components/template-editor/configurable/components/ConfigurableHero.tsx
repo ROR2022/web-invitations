@@ -1,7 +1,7 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ComponentProperty } from '../../types';
 import { heroSchema } from '../componentSchemas';
 import { createConfigurableProperties } from '../../utils/componentUtils';
@@ -14,13 +14,17 @@ import { createConfigurableProperties } from '../../utils/componentUtils';
 // Definir el tipo de propiedades basado en el esquema
 export type HeroProps = {
   // Propiedades visuales configurables
-  backgroundImage: string;
+  backgroundImages: string[]; // Array of image URLs
+  useCarousel: boolean; // Option to use carousel or single image
+  carouselInterval: number; // Time between slides in milliseconds
+  carouselEffect: 'fade' | 'slide'; // Effect for image transition
   backgroundOverlay: string;
   title: string;
   subtitle: string;
   name: string;
   titleFont: string;
   subtitleFont: string;
+  nameFont: string;
   textColor: string;
   height: 'fullscreen' | 'large' | 'medium' | 'small';
   animation: 'fade' | 'slide' | 'zoom' | 'none';
@@ -76,45 +80,110 @@ const getHeightClass = (height: string) => {
   }
 };
 
+// Función centralizada para obtener la familia de fuentes
+const getFontFamily = (fontName: string | undefined, defaultFont: string = 'serif') => {
+  // Usar un valor predeterminado si la fuente es undefined
+  const fontToUse = fontName || defaultFont;
+  
+  switch (fontToUse) {
+    case 'Great Vibes':
+      return 'var(--font-great-vibes)';
+    case 'Playfair Display':
+      return 'var(--font-playfair)';
+    case 'Montserrat':
+      return 'var(--font-montserrat)';
+    case 'Roboto':
+      return 'var(--font-roboto)';
+    case 'Lora':
+      return 'var(--font-lora)';
+    case 'Dancing Script':
+      return 'var(--font-dancing-script)';
+    case 'Pacifico':
+      return 'var(--font-pacifico)';
+    case 'Open Sans':
+      return 'var(--font-open-sans)';
+    case 'Oswald':
+      return 'var(--font-oswald)';
+    case 'Merriweather':
+      return 'var(--font-merriweather)';
+    default:
+      return fontToUse;
+  }
+};
+
 const ConfigurableHero: React.FC<HeroProps> = ({
-  backgroundImage,
+  backgroundImages,
+  useCarousel,
+  carouselInterval,
+  carouselEffect,
   backgroundOverlay,
   title,
   subtitle,
   name,
   titleFont,
   subtitleFont,
+  nameFont,
   textColor,
   height,
   animation,
   isEditing = false,
   onPropertyChange
 }) => {
+  // State to track current image index for carousel
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  
+  // Filter out empty image URLs
+  const validImages = backgroundImages.filter(img => img && img.trim() !== '');
+  
+  // If no valid images, use a default
+  const hasImages = validImages.length > 0;
+  
+  // Carousel effect - only run when useCarousel is true and we have multiple images
+  useEffect(() => {
+    if (!useCarousel || validImages.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentImageIndex(prev => (prev + 1) % validImages.length);
+    }, carouselInterval);
+    
+    return () => clearInterval(interval);
+  }, [useCarousel, validImages.length, carouselInterval]);
+  
   // Aplicar configuraciones de animación
   const animationConfig = getAnimationConfig(animation);
   const heightClass = getHeightClass(height);
   
-  // Estilos para las fuentes
-  const getTitleFontFamily = () => {
-    if (titleFont === 'Great Vibes') return 'var(--font-great-vibes)';
-    if (titleFont === 'Playfair Display') return 'var(--font-playfair)';
-    return titleFont; // Devuelve el valor directamente para otras fuentes
-  };
-  
-  const getSubtitleFontFamily = () => {
-    if (subtitleFont === 'Great Vibes') return 'var(--font-great-vibes)';
-    if (subtitleFont === 'Playfair Display') return 'var(--font-playfair)';
-    return subtitleFont;
-  };
-
+  // Estilos para las fuentes usando la función centralizada
   const titleFontStyle = {
-    fontFamily: getTitleFontFamily(),
+    fontFamily: getFontFamily(titleFont, 'serif'),
     color: textColor
   };
   
   const subtitleFontStyle = {
-    fontFamily: getSubtitleFontFamily(),
+    fontFamily: getFontFamily(subtitleFont, 'sans-serif'),
     color: textColor
+  };
+
+  const nameFontStyle = {
+    fontFamily: getFontFamily(nameFont, 'Great Vibes'),
+    color: textColor
+  };
+  
+  // Get the current background image or a fallback
+  const currentImage = hasImages ? validImages[currentImageIndex] : '/images/default-hero.jpg';
+  
+  // Animation variants for slides based on effect type
+  const slideVariants = {
+    fade: {
+      hidden: { opacity: 0 },
+      visible: { opacity: 1 },
+      exit: { opacity: 0 }
+    },
+    slide: {
+      hidden: { opacity: 0, x: 300 },
+      visible: { opacity: 1, x: 0 },
+      exit: { opacity: 0, x: -300 }
+    }
   };
 
   return (
@@ -123,20 +192,30 @@ const ConfigurableHero: React.FC<HeroProps> = ({
       data-component-type="hero"
       id="hero-section"
     >
-      {/* Imagen de fondo */}
-      <div
-        className="absolute inset-0 bg-cover bg-center z-0"
-        style={{
-          backgroundImage: `url(${backgroundImage})`,
-        }}
-      />
+      {/* Carousel background */}
+      <AnimatePresence mode="wait">
+        {useCarousel && validImages.length > 1 ? (
+          <motion.div
+            key={currentImageIndex}
+            className="absolute inset-0 bg-cover bg-center z-0"
+            initial={slideVariants[carouselEffect].hidden}
+            animate={slideVariants[carouselEffect].visible}
+            exit={slideVariants[carouselEffect].exit}
+            transition={{ duration: 1 }}
+            style={{ backgroundImage: `url(${currentImage})` }}
+          />
+        ) : (
+          <div
+            className="absolute inset-0 bg-cover bg-center z-0"
+            style={{ backgroundImage: `url(${currentImage})` }}
+          />
+        )}
+      </AnimatePresence>
       
       {/* Superposición de color */}
       <div
         className="absolute inset-0 z-0"
-        style={{
-          backgroundColor: backgroundOverlay
-        }}
+        style={{ backgroundColor: backgroundOverlay }}
       />
       
       {/* Contenido */}
@@ -166,13 +245,27 @@ const ConfigurableHero: React.FC<HeroProps> = ({
         
         <motion.div
           className="text-4xl md:text-5xl mt-4"
-          style={titleFontStyle}
+          style={nameFontStyle}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.9, duration: 0.8 }}
         >
           {name}
         </motion.div>
+        
+        {/* Carousel indicators when in carousel mode */}
+        {useCarousel && validImages.length > 1 && (
+          <div className="absolute bottom-24 left-0 right-0 flex justify-center gap-2 z-10">
+            {validImages.map((_, index) => (
+              <button
+                key={index}
+                className={`w-2 h-2 rounded-full ${index === currentImageIndex ? 'bg-white' : 'bg-white/40'}`}
+                onClick={() => setCurrentImageIndex(index)}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
         
         {/* Indicador de desplazamiento */}
         <motion.div
@@ -216,8 +309,6 @@ const ConfigurableHero: React.FC<HeroProps> = ({
 };
 
 // Exportar propiedades disponibles para el editor
-console.warn('ConfigurableHero heroSchema: ', heroSchema);
 export const configurableProperties = createConfigurableProperties(heroSchema);
-console.warn('ConfigurableHero configurableProperties: ', configurableProperties);
 
 export default ConfigurableHero;

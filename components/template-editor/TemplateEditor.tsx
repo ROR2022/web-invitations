@@ -1,595 +1,463 @@
-"use client";
+"use client"
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { TemplateConfig, ComponentConfig, ComponentType } from './types';
-import InvitationPreview from './InvitationPreview';
-import PropertyEditor from './PropertyEditor';
-import ThemeEditor from './ThemeEditor';
-import { defaultTheme } from './themeSchemas';
-import { componentDefaultProps } from './configurable/componentSchemas';
+import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose,
-} from '@/components/ui/dialog';
-import { 
-  Plus, 
-  Save, 
-  ArrowLeft,
-  Grid,
-  Palette,
-  Layers,
-  Eye,
-  EyeOff,
-  PanelLeft
-} from 'lucide-react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import DraggableComponentList from './DraggableComponentList';
-import { useDebounce } from 'use-debounce';
-import isEqual from 'lodash/isEqual';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { generateCode } from './codeGenerator';
+import { Invitation, PackageType } from '@/types/invitation';
+import { TemplateConfig } from './types';
+import { ComponentType } from './types'; 
+import PropertyEditor from './property-editor/PropertyEditor';
+import { Loader2, Save, Eye } from 'lucide-react';
+import './mobile/mobile-editor.css';
+import { useIsMobile } from '@/hooks/use-mobile';
+import MobileTemplateEditor from './mobile/MobileTemplateEditor';
+import './mobile/mobile-editor.css';
 
-// Nombres amigables para los tipos de componentes
-const componentTypeNames: Record<string, string> = {
-  hero: 'Portada',
-  countdown: 'Cuenta Regresiva',
-  eventDetails: 'Detalles del Evento',
-  gallery: 'Galería',
-  attendance: 'Asistencia',
-  giftOptions: 'Mesa de Regalos',
-  musicPlayer: 'Reproductor de Música',
-  thankYou: 'Agradecimiento',
-};
+interface TemplateEditorProps {
+  invitation: Invitation;
+  onSave: (config: any) => Promise<void>;
+  isSaving?: boolean;
+}
 
-type TemplateEditorProps = {
-  initialConfig?: TemplateConfig;
-  templateId?: string;
-  onSave?: (config: TemplateConfig) => Promise<void>;
-  onBack?: () => void;
-};
-
-/**
- * Editor de plantillas principal
- * Integra la previsualización y el editor de propiedades
- */
 const TemplateEditor: React.FC<TemplateEditorProps> = ({
-  initialConfig,
-  templateId,
+  invitation,
   onSave,
-  onBack
+  isSaving = false
 }) => {
-  // Configuración inicial de la plantilla
-  const [templateConfig, setTemplateConfig] = useState<TemplateConfig>(() => {
-    if (initialConfig) {
-      return { ...initialConfig };
-    }
-    
-    // Si no hay configuración inicial, crear una plantilla básica
-    return {
-      id: templateId || uuidv4(),
-      name: 'Nueva Plantilla',
-      description: 'Descripción de la plantilla',
-      theme: { ...defaultTheme },
-      components: []
-    };
-  });
+  const isMobile = useIsMobile();
+  const [activeTab, setActiveTab] = useState('general');
+  const [config, setConfig] = useState<TemplateConfig | null>(null);
+  const [previewCode, setPreviewCode] = useState<{ html: string; css: string; js: string } | null>(null);
+  const [previewVisible, setPreviewVisible] = useState(false);
   
-  // Estado para el componente seleccionado
-  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
-  const [showComponentPanel, setShowComponentPanel] = useState(true);
-  const [addComponentDialogOpen, setAddComponentDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('components');
-  
-  // Estado para indicar el estado de guardado
-  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
-  
-  // Referencia al último config guardado para comparación profunda
-  const lastSavedConfigRef = useRef<TemplateConfig | null>(null);
-  
-  // Establecer la referencia inicial al cargar el componente
-  useEffect(() => {
-    if (initialConfig) {
-      lastSavedConfigRef.current = structuredClone(initialConfig);
-      console.log('[DEBUG] Initial config reference set');
-    }
-  }, [initialConfig]);
-  
-  // Debounce sobre la configuración para el guardado automático
-  const [debouncedConfig] = useDebounce(templateConfig, 2000);
-  
-  // Effect para el guardado automático cuando cambia la configuración
-  useEffect(() => {
-    // Skip si no hay función de guardado
-    if (!onSave) return;
-    
-    // Comparación profunda para verificar si realmente hay cambios
-    const hasRealChanges = !isEqual(debouncedConfig, lastSavedConfigRef.current);
-    
-    console.log('[DEBUG] Auto-save effect triggered', {
-      timestamp: new Date().toISOString(),
-      hasOnSaveFunction: !!onSave,
-      hasRealChanges,
-      debouncedConfigId: debouncedConfig?.id,
-      templateConfigId: templateConfig?.id,
-      componentsCount: debouncedConfig?.components?.length || 0,
-      saveStatus
-    });
-    
-    // No hacemos nada si no hay cambios reales
-    if (!hasRealChanges) {
-      console.log('[DEBUG] No real changes detected, skipping auto-save');
-      return;
-    }
-    
-    // Solo cambiamos el estado visual para mantener la UI coherente
-    if (saveStatus === 'saved') {
-      console.log('[DEBUG] Marking as unsaved');
-      setSaveStatus('unsaved');
-    }
-    
-    // Ejecutamos el guardado automático
-    const autoSave = async () => {
-      try {
-        // Ya se marcó como unsaved arriba, ahora lo marcamos como saving
-        setSaveStatus('saving');
-        await onSave(debouncedConfig);
-        // Actualizamos la referencia con el config guardado
-        lastSavedConfigRef.current = structuredClone(debouncedConfig);
-        setSaveStatus('saved');
-        console.log('[DEBUG] Auto-save completed successfully');
-      } catch (error) {
-        console.error('Error al guardar automáticamente:', error);
-        setSaveStatus('unsaved');
-      }
-    };
-    
-    // Iniciar el guardado automático
-    autoSave();
-  }, [debouncedConfig, onSave, saveStatus, templateConfig?.id]);
-  
-  // Obtener el componente seleccionado
-  const selectedComponent = selectedComponentId
-    ? templateConfig.components.find(c => c.id === selectedComponentId) || null
-    : null;
-  
-  // Limpiar la selección si el componente se elimina
-  useEffect(() => {
-    if (selectedComponentId && !templateConfig.components.some(c => c.id === selectedComponentId)) {
-      setSelectedComponentId(null);
-    }
-    if (selectedComponent){
-      console.warn('Componente seleccionado: ', selectedComponent);
-    }
-  }, [templateConfig.components, selectedComponentId, selectedComponent]);
-  
-  // Manejar cambios en el nombre de la plantilla
-  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setTemplateConfig(prev => ({
-      ...prev,
-      name: e.target.value
-    }));
-  };
-  
-  // Manejar selección de componente
-  const handleComponentSelect = (componentId: string) => {
-    setSelectedComponentId(componentId);
-    setShowComponentPanel(true);
-    setActiveTab('components');
-  };
-  
-  // Manejar cambios en las propiedades de un componente
-  const handlePropertyChange = (property: string, value: any) => {
-    if (!selectedComponentId) return;
-    
-    setTemplateConfig(prev => ({
-      ...prev,
-      components: prev.components.map(component => 
-        component.id === selectedComponentId 
-          ? {
-              ...component,
-              properties: {
-                ...component.properties,
-                [property]: value
-              }
-            }
-          : component
-      )
-    }));
-  };
-  
-  // Manejar cambios en la visibilidad de un componente
-  const handleVisibilityToggle = (visible: boolean) => {
-    if (!selectedComponentId) return;
-    
-    setTemplateConfig(prev => ({
-      ...prev,
-      components: prev.components.map(component => 
-        component.id === selectedComponentId 
-          ? { ...component, visible }
-          : component
-      )
-    }));
-  };
-  
-  // Eliminar un componente
-  const handleRemoveComponent = () => {
-    if (!selectedComponentId) return;
-    
-    setTemplateConfig(prev => ({
-      ...prev,
-      components: prev.components.filter(component => component.id !== selectedComponentId)
-    }));
-    
-    setSelectedComponentId(null);
-  };
-  
-  // Añadir un nuevo componente
-  const handleAddComponent = (type: ComponentType) => {
-    // Crear un nuevo componente con propiedades por defecto
-    const newComponent: ComponentConfig = {
-      id: uuidv4(),
-      type,
-      order: templateConfig.components.length,
-      visible: true,
-      properties: { ...componentDefaultProps[type] }
-    };
-    
-    setTemplateConfig(prev => ({
-      ...prev,
-      components: [...prev.components, newComponent]
-    }));
-    
-    // Seleccionar el nuevo componente
-    setSelectedComponentId(newComponent.id);
-    setAddComponentDialogOpen(false);
-    setShowComponentPanel(true);
-    setActiveTab('components');
-  };
-  
-  // Manejar cambios en el tema
-  const handleThemeChange = (property: string, value: any) => {
-    setTemplateConfig(prev => ({
-      ...prev,
-      theme: {
-        ...prev.theme,
-        colors: {
-          ...prev.theme.colors,
-          [property]: value
+  // Obtener los componentes predeterminados según el tipo de paquete
+  // Envolverlo en useCallback para optimizar su uso en useEffect
+  const getDefaultComponents = React.useCallback((packageType: PackageType) => {
+    // Componentes base disponibles en todos los paquetes
+    const baseComponents = [
+      {
+        id: 'hero-1',
+        type: ComponentType.HERO,
+        order: 1,
+        visible: true,
+        properties: {
+          title: invitation.config?.title || 'Nuestra Celebración',
+          subtitle: 'Te invitamos a compartir este momento especial',
+          backgroundImage: '',
+        }
+      },
+      {
+        id: 'event-details-1',
+        type: ComponentType.EVENT_DETAILS,
+        order: 2,
+        visible: true,
+        properties: {
+          title: 'Detalles del Evento',
+          date: '31 de Diciembre, 2023',
+          time: '20:00',
+          location: 'Salón de Eventos',
+          locationUrl: '',
         }
       }
-    }));
-  };
+    ];
+    
+    return baseComponents;
+  }, [invitation.config]);
   
-  // Manejar guardado manual
-  const handleSave = async () => {
-    if (!onSave) return;
-    
-    try {
-      console.log('[DEBUG] Manual save initiated');
-      setSaveStatus('saving');
-      await onSave(templateConfig);
+  // Inicializar la configuración de la plantilla a partir de la invitación
+  useEffect(() => {
+    if (invitation && invitation.config) {
+      // Construir la configuración inicial para el editor
+      const initialConfig: TemplateConfig = {
+        id: invitation.id,
+        name: invitation.config.title || 'Invitación sin título',
+        components: getDefaultComponents(invitation.packageType) as any,
+        theme: {
+          name: invitation.config.title,
+          colors: {
+            primary: invitation.config.theme?.primaryColor || '#9333ea',
+            secondary: invitation.config.theme?.secondaryColor || '#6b21a8',
+            background: '#ffffff',
+            text: '#333333',
+            accent: '#ffd700',
+          },
+          fonts: {
+            heading: invitation.config.theme?.fontFamily || 'Playfair Display',
+            body: 'Montserrat',
+            accent: 'Dancing Script',
+          }
+        }
+      };
       
-      // Actualizamos la referencia con el config guardado tras guardado exitoso
-      lastSavedConfigRef.current = structuredClone(templateConfig);
+      setConfig(initialConfig);
+    }
+  }, [invitation, getDefaultComponents]);
+
+  // Generar el código de previsualización cuando cambie la configuración
+  useEffect(() => {
+    if (config) {
+      try {
+        const code = generateCode(config);
+        setPreviewCode(code);
+      } catch (error) {
+        console.error("Error generating preview code:", error);
+      }
+    }
+  }, [config]);
+
+  // Actualizar una propiedad específica de un componente
+  const handleComponentUpdate = (componentId: string, propertyName: string, value: any) => {
+    if (!config) return;
+    
+    setConfig((prevConfig: TemplateConfig | null) => {
+      if (!prevConfig) return prevConfig;
       
-      console.log('[DEBUG] Manual save completed');
-      setSaveStatus('saved');
-    } catch (error) {
-      console.error('Error al guardar:', error);
-      setSaveStatus('unsaved');
-    }
-  };
-  
-  // Reordenar componentes
-  const handleMoveComponent = (componentId: string, direction: 'up' | 'down') => {
-    const componentIndex = templateConfig.components.findIndex(c => c.id === componentId);
-    if (componentIndex === -1) return;
-    
-    const newComponents = [...templateConfig.components];
-    const component = newComponents[componentIndex];
-    
-    if (direction === 'up' && componentIndex > 0) {
-      newComponents[componentIndex] = newComponents[componentIndex - 1];
-      newComponents[componentIndex - 1] = component;
-    } else if (direction === 'down' && componentIndex < newComponents.length - 1) {
-      newComponents[componentIndex] = newComponents[componentIndex + 1];
-      newComponents[componentIndex + 1] = component;
-    }
-    
-    // Actualizar el orden de todos los componentes
-    const updatedComponents = newComponents.map((c, index) => ({
-      ...c,
-      order: index
-    }));
-    
-    setTemplateConfig(prev => ({
-      ...prev,
-      components: updatedComponents
-    }));
+      const updatedComponents = prevConfig.components.map((component: any) => {
+        if (component.id === componentId) {
+          return {
+            ...component,
+            properties: {
+              ...component.properties,
+              [propertyName]: value
+            }
+          };
+        }
+        return component;
+      });
+      
+      return {
+        ...prevConfig,
+        components: updatedComponents
+      };
+    });
   };
 
+  // Actualizar la visibilidad de un componente
+  const handleComponentVisibilityChange = (componentId: string, visible: boolean) => {
+    if (!config) return;
+    
+    setConfig((prevConfig: TemplateConfig | null) => {
+      if (!prevConfig) return prevConfig;
+      
+      const updatedComponents = prevConfig.components.map((component: any) => {
+        if (component.id === componentId) {
+          return {
+            ...component,
+            visible
+          };
+        }
+        return component;
+      });
+      
+      return {
+        ...prevConfig,
+        components: updatedComponents
+      };
+    });
+  };
+
+  // Actualizar el tema de la plantilla
+  const handleThemeUpdate = (property: string, value: any) => {
+    if (!config) return;
+    
+    setConfig((prevConfig: TemplateConfig | null) => {
+      if (!prevConfig) return prevConfig;
+      
+      // Manejar actualización de colores
+      if (property.startsWith('colors.')) {
+        const colorKey = property.split('.')[1];
+        return {
+          ...prevConfig,
+          theme: {
+            ...prevConfig.theme,
+            colors: {
+              ...prevConfig.theme.colors,
+              [colorKey]: value
+            }
+          }
+        };
+      }
+      
+      // Manejar actualización de fuentes
+      if (property.startsWith('fonts.')) {
+        const fontKey = property.split('.')[1];
+        // Asegurar que el objeto fonts exista y que el valor nunca sea undefined
+        const currentFonts = prevConfig.theme.fonts || {
+          heading: 'Playfair Display',
+          body: 'Montserrat',
+          accent: 'Dancing Script'
+        };
+        return {
+          ...prevConfig,
+          theme: {
+            ...prevConfig.theme,
+            fonts: {
+              ...currentFonts,
+              [fontKey]: value || 'Playfair Display' // Valor por defecto si es undefined
+            }
+          }
+        };
+      }
+      
+      return prevConfig;
+    });
+  };
+
+  // Guardar la configuración actualizada
+  const handleSave = async () => {
+    if (!config) return;
+    
+    // Convertir la configuración del editor al formato esperado por la API
+    const updatedConfig = {
+      title: config.name,
+      eventDate: config.components.find((c: any) => c.type === ComponentType.EVENT_DETAILS)?.properties.date || '',
+      eventTime: config.components.find((c: any) => c.type === ComponentType.EVENT_DETAILS)?.properties.time || '',
+      location: config.components.find((c: any) => c.type === ComponentType.EVENT_DETAILS)?.properties.location || '',
+      eventType: invitation.config.eventType,
+      hostNames: [config.components.find((c: any) => c.type === ComponentType.THANK_YOU)?.properties.signature || ''],
+      rsvpEnabled: config.components.find((c: any) => c.type === ComponentType.ATTENDANCE)?.visible || true,
+      theme: {
+        primaryColor: config.theme.colors.primary,
+        secondaryColor: config.theme.colors.secondary,
+        fontFamily: config.theme.fonts?.heading || 'Playfair Display',
+      },
+      components: {
+        hero: config.components.find((c: any) => c.type === ComponentType.HERO)?.visible || true,
+        details: config.components.find((c: any) => c.type === ComponentType.EVENT_DETAILS)?.visible || true,
+        countdown: config.components.find((c: any) => c.type === ComponentType.COUNTDOWN)?.visible || false,
+        gallery: config.components.find((c: any) => c.type === ComponentType.GALLERY)?.visible || false,
+        music: config.components.find((c: any) => c.type === ComponentType.MUSIC_PLAYER)?.visible || false,
+        attendance: config.components.find((c: any) => c.type === ComponentType.ATTENDANCE)?.visible || true,
+        gifts: true, // Siempre habilitado por ahora
+        itinerary: config.components.find((c: any) => c.type === ComponentType.ITINERARY)?.visible || false,
+        accommodation: config.components.find((c: any) => c.type === ComponentType.ACCOMMODATION)?.visible || false,
+      },
+      templateId: invitation.config.templateId,
+      editorConfig: config, // Guardar la configuración completa del editor para futura edición
+    };
+    
+    await onSave(updatedConfig);
+  };
+
+  // Alternar la vista previa
+  const togglePreview = () => {
+    setPreviewVisible(!previewVisible);
+  };
+
+  // Si no hay configuración, mostrar un estado de carga
+  if (!config) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Si es un dispositivo móvil, usar la versión móvil del editor
+  if (isMobile) {
+    return (
+      <MobileTemplateEditor 
+        invitation={invitation}
+        onSave={onSave}
+        isSaving={isSaving}
+      />
+    );
+  }
+
+  // Versión de escritorio del editor
   return (
-    <div className="h-screen flex flex-col">
-      {/* Barra superior */}
-      <div className="border-b bg-white p-3 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft size={18} className="mr-1" />
-            Volver
-          </Button>
-          <div className="h-5 border-l mx-2"></div>
-          <Input
-            value={templateConfig.name}
-            onChange={handleNameChange}
-            className="max-w-xs font-medium"
-            placeholder="Nombre de la plantilla"
-          />
-        </div>
+    <div className="flex flex-col gap-4">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Editor de Plantilla</h2>
         <div className="flex items-center gap-2">
           <Button 
-            variant="ghost" 
+            variant="outline" 
             size="sm" 
-            onClick={() => setIsPreviewMode(!isPreviewMode)}
+            onClick={togglePreview}
           >
-            {isPreviewMode ? (
+            <Eye className="h-4 w-4 mr-2" />
+            {previewVisible ? 'Ocultar' : 'Vista'} previa
+          </Button>
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving}
+          >
+            {isSaving ? (
               <>
-                <EyeOff size={18} className="mr-1" />
-                Edición
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Guardando...
               </>
             ) : (
               <>
-                <Eye size={18} className="mr-1" />
-                Vista previa
+                <Save className="h-4 w-4 mr-2" />
+                Guardar
               </>
             )}
           </Button>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => setShowComponentPanel(!showComponentPanel)}
-          >
-            <PanelLeft size={18} className="mr-1" />
-            {showComponentPanel ? 'Ocultar panel' : 'Mostrar panel'}
-          </Button>
-          
-          <div className="text-sm text-muted-foreground mx-2">
-            {saveStatus === 'saved' && (
-              <span className="flex items-center text-green-600">
-                <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Guardado
-              </span>
-            )}
-            {saveStatus === 'saving' && (
-              <span className="flex items-center text-yellow-600">
-                <svg className="h-4 w-4 mr-1 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Guardando...
-              </span>
-            )}
-            {saveStatus === 'unsaved' && (
-              <span className="flex items-center text-amber-600">
-                <svg className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Cambios sin guardar
-              </span>
-            )}
-          </div>
-          
-          <Button 
-            onClick={handleSave} 
-            disabled={saveStatus === 'saving'}
-            className={saveStatus === 'saved' ? 'bg-green-600 hover:bg-green-700' : ''}
-          >
-            <Save size={18} className="mr-2" />
-            {saveStatus === 'saving' ? 'Guardando...' : 'Guardar'}
-          </Button>
         </div>
       </div>
-      
-      {/* Contenido principal */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Panel lateral */}
-        {showComponentPanel && (
-          <div className="w-80 border-r bg-gray-50 flex flex-col">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-              <div className="flex items-center justify-between border-b px-2 pt-2">
-                <TabsList className="justify-start bg-transparent rounded-none border-0">
-                  <TabsTrigger value="components" className="flex items-center">
-                    <Layers size={16} className="mr-1" />
-                    Componentes
-                  </TabsTrigger>
-                  <TabsTrigger value="theme" className="flex items-center">
-                    <Palette size={16} className="mr-1" />
-                    Tema
-                  </TabsTrigger>
-                </TabsList>
-                
-                <Button 
-                  onClick={() => setAddComponentDialogOpen(true)} 
-                  variant="default" 
-                  size="sm" 
-                  className="bg-primary hover:bg-primary/90 text-white"
-                >
-                  <Plus size={16} />
-                </Button>
-              </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Panel de edición */}
+        <div className={`lg:col-span-${previewVisible ? 1 : 3}`}>
+          <Card className="p-4">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="mb-4">
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="theme">Tema</TabsTrigger>
+                <TabsTrigger value="components">Componentes</TabsTrigger>
+              </TabsList>
               
-              <TabsContent value="components" className="flex-1 flex flex-col p-0 m-0">
-                {selectedComponent ? (
-                  <PropertyEditor
-                    selectedComponent={selectedComponent}
-                    onPropertyChange={handlePropertyChange}
-                    onVisibilityToggle={handleVisibilityToggle}
-                    onRemoveComponent={handleRemoveComponent}
-                    onCloseEditor={() => setSelectedComponentId(null)}
-                  />
-                ) : (
-                  <div className="p-4 flex-1 flex flex-col">
-                    <h3 className="font-medium mb-4">Componentes de la invitación</h3>
-                    
-                    {templateConfig.components.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500 flex-1 flex flex-col items-center justify-center">
-                        <p className="mb-4">No hay componentes en esta plantilla</p>
-                        <div className="animate-pulse">
-                          <Button 
-                            onClick={() => setAddComponentDialogOpen(true)} 
-                            variant="default" 
-                            size="lg"
-                            className="bg-primary hover:bg-primary/90 shadow-lg border-2 border-primary/30 text-white font-semibold"
-                          >
-                            <Plus size={22} className="mr-2" />
-                            Añadir Componente
-                          </Button>
-                        </div>
-                        <p className="mt-6 text-sm">👆 Haz clic aquí para comenzar a crear tu invitación</p>
-                        <p className="mt-2 text-sm text-muted-foreground">O usa el botón + en la barra superior</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="space-y-2 flex-1 overflow-y-auto">
-                          <div className="p-2 mb-4 bg-blue-50 border border-blue-200 rounded-md">
-                            <p className="text-sm text-blue-700 mb-1 font-medium">🖱️ Cómo editar componentes</p>
-                            <div className="flex flex-col gap-2">
-                              <div className="p-2 bg-white rounded border border-blue-100">
-                                <div className="flex items-center">
-                                  <div className="bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-2">1</div>
-                                  <p className="text-xs font-medium text-blue-800">Selecciona un componente</p>
-                                </div>
-                                <p className="text-xs text-blue-600 mt-1 ml-7">
-                                  Haz clic en un componente de la lista o directamente en el componente en la previsualización
-                                </p>
-                              </div>
-                              
-                              <div className="p-2 bg-white rounded border border-blue-100">
-                                <div className="flex items-center">
-                                  <div className="bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-2">2</div>
-                                  <p className="text-xs font-medium text-blue-800">Edita sus propiedades</p>
-                                </div>
-                                <p className="text-xs text-blue-600 mt-1 ml-7">
-                                  Aparecerá un panel con todos los elementos que puedes personalizar
-                                </p>
-                              </div>
-                              
-                              <div className="p-2 bg-white rounded border border-blue-100">
-                                <div className="flex items-center">
-                                  <div className="bg-primary text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mr-2">3</div>
-                                  <p className="text-xs font-medium text-blue-800">Para el componente &quot;Portada&quot;:</p>
-                                </div>
-                                <ul className="text-xs text-blue-600 mt-1 ml-7 space-y-1">
-                                  <li><span className="font-medium">→ Imagen de fondo:</span> Busca la pestaña &quot;Apariencia&quot; y haz clic en &quot;Imagen de fondo&quot; para seleccionar una imagen</li>
-                                  <li><span className="font-medium">→ Textos:</span> En la pestaña &quot;Contenido&quot;, puedes editar los campos &quot;Título&quot;, &quot;Subtítulo&quot; y &quot;Nombre&quot;</li>
-                                  <li><span className="font-medium">→ Colores:</span> Dentro de la pestaña &quot;Apariencia&quot;, encontrarás &quot;Superposición&quot; y &quot;Color de texto&quot;</li>
-                                </ul>
-                                <p className="mt-2 text-xs text-blue-600 ml-7 italic">
-                                  El editor usa pestañas para organizar las propiedades por categorías.
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <DraggableComponentList
-                            components={templateConfig.components}
-                            selectedComponentId={selectedComponentId}
-                            onSelectComponent={setSelectedComponentId}
-                            onReorderComponents={(updatedComponents) => {
-                              setTemplateConfig({
-                                ...templateConfig,
-                                components: updatedComponents
-                              });
-                            }}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </TabsContent>
-              
-              <TabsContent value="theme" className="flex-1 p-0 m-0">
-                <ThemeEditor 
-                  theme={templateConfig.theme} 
-                  onThemeChange={handleThemeChange}
+              <TabsContent value="general" className="space-y-4">
+                <PropertyEditor
+                  component={{
+                    id: 'general',
+                    type: 'general' as any,
+                    order: 0,
+                    visible: true,
+                    properties: {
+                      name: config.name
+                    }
+                  }}
+                  schema={{
+                    name: {
+                      type: 'text',
+                      label: 'Título de la invitación',
+                      description: 'Este será el título principal de tu invitación',
+                      required: true
+                    }
+                  }}
+                  onChange={(name, value) => {
+                    setConfig(prev => prev ? { ...prev, name: value } : null);
+                  }}
                 />
               </TabsContent>
+              
+              <TabsContent value="theme" className="space-y-4">
+                <h3 className="text-lg font-medium mb-4">Personaliza el tema</h3>
+                
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Colores</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Controles para colores */}
+                      {Object.entries(config.theme.colors).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <label className="text-sm capitalize min-w-[100px]">{key}:</label>
+                          <div className="flex-1">
+                            <input 
+                              type="color" 
+                              value={value} 
+                              onChange={(e) => handleThemeUpdate(`colors.${key}`, e.target.value)}
+                              className="w-full h-8 cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <h4 className="text-sm font-medium mb-2">Fuentes</h4>
+                    <div className="space-y-4">
+                      {/* Controles para fuentes (simplificado por ahora) */}
+                      {config.theme.fonts && Object.entries(config.theme.fonts).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <label className="text-sm capitalize min-w-[100px]">{key}:</label>
+                          <select 
+                            value={value || ''} 
+                            onChange={(e) => handleThemeUpdate(`fonts.${key}`, e.target.value)}
+                            className="flex-1 p-2 border rounded"
+                          >
+                            <option value="Playfair Display">Playfair Display</option>
+                            <option value="Montserrat">Montserrat</option>
+                            <option value="Roboto">Roboto</option>
+                            <option value="Dancing Script">Dancing Script</option>
+                            <option value="Lora">Lora</option>
+                            <option value="Nunito">Nunito</option>
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="components" className="space-y-4">
+                <h3 className="text-lg font-medium mb-4">Administra los componentes</h3>
+                
+                {/* Acordeón de componentes */}
+                <div className="space-y-4">
+                  {config.components.map((component) => (
+                    <details key={component.id} className="border rounded-lg">
+                      <summary className="p-3 font-medium cursor-pointer flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <input 
+                            type="checkbox" 
+                            checked={component.visible}
+                            onChange={(e) => handleComponentVisibilityChange(component.id, e.target.checked)}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span>{
+                            {
+                              [ComponentType.HERO]: 'Portada',
+                              [ComponentType.EVENT_DETAILS]: 'Detalles del Evento',
+                              [ComponentType.COUNTDOWN]: 'Cuenta Regresiva',
+                              [ComponentType.GALLERY]: 'Galería',
+                              [ComponentType.ATTENDANCE]: 'Asistencia',
+                              [ComponentType.MUSIC_PLAYER]: 'Reproductor de Música',
+                              [ComponentType.THANK_YOU]: 'Agradecimiento',
+                              [ComponentType.ACCOMMODATION]: 'Alojamiento',
+                              [ComponentType.ITINERARY]: 'Itinerario',
+                              [ComponentType.GIFT_OPTIONS]: 'Mesa de Regalos',
+                            }[component.type] || component.type
+                          }</span>
+                        </div>
+                      </summary>
+                      <div className="p-4 border-t">
+                        {component.visible ? (
+                          <PropertyEditor
+                            component={component}
+                            onChange={handleComponentUpdate}
+                          />
+                        ) : (
+                          <Alert>
+                            <AlertDescription>
+                              Este componente está desactivado. Actívalo para editar sus propiedades.
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    </details>
+                  ))}
+                </div>
+              </TabsContent>
             </Tabs>
+          </Card>
+        </div>
+        
+        {/* Vista previa */}
+        {previewVisible && previewCode && (
+          <div className="lg:col-span-2">
+            <Card className="h-full overflow-hidden">
+              <div className="h-[800px] overflow-hidden">
+                <iframe 
+                  srcDoc={`
+                    ${previewCode.html}
+                    <style>${previewCode.css}</style>
+                    <script>${previewCode.js}</script>
+                  `}
+                  className="w-full h-full border-0"
+                  title="Vista previa de la invitación"
+                ></iframe>
+              </div>
+            </Card>
           </div>
         )}
-        
-        {/* Área de previsualización */}
-        <div className="flex-1 overflow-auto bg-gray-100">
-          {templateConfig.components.length === 0 && !showComponentPanel && (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-              <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md">
-                <h3 className="text-xl font-bold mb-4">¡Comienza a crear tu invitación!</h3>
-                <p className="mb-6 text-gray-600">Para añadir elementos a tu invitación, haz clic en el botón de abajo. Luego, puedes editar los componentes directamente en la previsualización o en el panel de propiedades.</p>
-                <Button 
-                  onClick={() => {
-                    setShowComponentPanel(true);
-                    setActiveTab('components');
-                    setTimeout(() => setAddComponentDialogOpen(true), 300);
-                  }} 
-                  size="lg"
-                  className="bg-primary hover:bg-primary/90"
-                >
-                  <Plus size={20} className="mr-2" />
-                  Añadir tu primer componente
-                </Button>
-              </div>
-            </div>
-          )}
-          <InvitationPreview
-            config={templateConfig}
-            isEditing={!isPreviewMode}
-            onComponentSelect={!isPreviewMode ? handleComponentSelect : undefined}
-            onPropertyChange={!isPreviewMode ? (componentId, property, value) => {
-              setSelectedComponentId(componentId);
-              handlePropertyChange(property, value);
-            } : undefined}
-          />
-        </div>
       </div>
-      
-      {/* Diálogo para añadir componentes */}
-      <Dialog open={addComponentDialogOpen} onOpenChange={setAddComponentDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Añadir nuevo componente</DialogTitle>
-          </DialogHeader>
-          
-          <div className="grid grid-cols-2 gap-3 py-4">
-            {Object.entries(componentTypeNames).map(([type, name]) => (
-              <Button
-                key={type}
-                variant="outline"
-                className="h-20 flex flex-col justify-center items-center gap-2"
-                onClick={() => handleAddComponent(type as ComponentType)}
-              >
-                <Plus size={18} />
-                {name}
-              </Button>
-            ))}
-          </div>
-          <DialogFooter className="flex justify-between items-center gap-3 mt-2">
-            <div className="text-sm text-muted-foreground">
-              <p>Selecciona un componente para añadirlo a tu invitación</p>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

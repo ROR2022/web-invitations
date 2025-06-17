@@ -24,6 +24,7 @@ export interface Database {
           is_public: boolean | null
           event_type: string | null
           thumbnail: string | null
+          category: string | null
         }
         Insert: {
           id?: string
@@ -39,6 +40,7 @@ export interface Database {
           is_public?: boolean | null
           event_type?: string | null
           thumbnail?: string | null
+          category?: string | null
         }
         Update: {
           id?: string
@@ -54,6 +56,7 @@ export interface Database {
           is_public?: boolean | null
           event_type?: string | null
           thumbnail?: string | null
+          category?: string | null
         }
       }
       invitations: {

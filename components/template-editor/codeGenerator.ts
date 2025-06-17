@@ -244,7 +244,7 @@ function generateComponentHTML(component: ComponentConfig, config: TemplateConfi
         width="100%"
         height="300"
         frameborder="0"
-        src="https://maps.google.com/maps?q=${encodeURIComponent(component.properties.location || '')}&output=embed"
+        src="https://maps.google.com/maps?q=${encodeURIComponent((component.properties.location as unknown) as string || '')}&output=embed"
         allowfullscreen
       ></iframe>
     </div>` : ''}
@@ -321,6 +321,14 @@ function generateComponentHTML(component: ComponentConfig, config: TemplateConfi
   </section>`;
       
     case 'musicPlayer':
+      // Asegurar que la URL del audio sea absoluta para que funcione correctamente
+      const audioUrl = (component.properties.audioUrl as unknown) as string || '';
+      const fullAudioUrl = audioUrl.startsWith('http') 
+        ? audioUrl 
+        : audioUrl.startsWith('/') 
+          ? audioUrl 
+          : `/music/${audioUrl}`;
+          
       return `
   <section id="${id}" class="section music-player-section">
     <h2>${component.properties.title || 'Música'}</h2>
@@ -333,7 +341,7 @@ function generateComponentHTML(component: ComponentConfig, config: TemplateConfi
         </div>
       </div>
       <audio id="background-music" loop>
-        <source src="${component.properties.songUrl || ''}" type="audio/mp3">
+        <source src="${fullAudioUrl}" type="audio/mp3">
         Tu navegador no soporta audio HTML5.
       </audio>
     </div>
@@ -445,6 +453,180 @@ function generateComponentCSS(component: ComponentConfig, config: TemplateConfig
   letter-spacing: 1px;
 }`;
       
+    case 'gallery':
+      return `
+/* Gallery Section */
+.gallery-section {
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+.gallery-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.gallery-item {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  height: 0;
+  padding-bottom: 75%; /* 4:3 aspect ratio */
+  position: relative;
+}
+
+.gallery-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+
+.gallery-item img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Lightbox */
+.lightbox {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.9);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.lightbox.active {
+  display: flex;
+}
+
+.lightbox-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+}
+
+.lightbox-image {
+  max-width: 100%;
+  max-height: 90vh;
+  border: 3px solid white;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -20px;
+  right: -20px;
+  width: 40px;
+  height: 40px;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  background-color: var(--color-primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.lightbox-prev {
+  left: 20px;
+}
+
+.lightbox-next {
+  right: 20px;
+}`;
+      
+    case 'musicPlayer':
+      return `
+/* Music Player Section */
+.music-player-section {
+  padding: 3rem 1rem;
+  text-align: center;
+}
+
+.music-player-container {
+  max-width: 500px;
+  margin: 2rem auto 0;
+  padding: 1.5rem;
+  background-color: rgba(var(--color-primary-rgb), 0.1);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.play-button {
+  background: var(--color-primary);
+  color: white;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+}
+
+.play-button:hover {
+  background: var(--color-secondary);
+  transform: scale(1.05);
+}
+
+.song-info {
+  text-align: left;
+  flex-grow: 1;
+}
+
+.song-title {
+  font-weight: bold;
+  font-size: 1.2rem;
+  margin: 0;
+  color: var(--color-primary);
+}
+
+.song-artist {
+  margin: 0;
+  color: var(--color-text);
+  opacity: 0.8;
+  font-size: 0.9rem;
+}`;
+      
     // Añadir casos para los demás componentes...
     
     default:
@@ -484,23 +666,97 @@ function generateComponentJS(component: ComponentConfig, config: TemplateConfig)
     }, 1000);
   }`;
       
-    case 'attendance':
+    case 'gallery':
       return `
-  // Inicializar formulario de asistencia
-  const attendanceForm = document.getElementById('attendance-form');
-  if (attendanceForm) {
-    attendanceForm.addEventListener('submit', function(e) {
-      e.preventDefault();
+  // Inicializar galería con lightbox
+  if (document.getElementById('${id}')) {
+    // Crear lightbox
+    const lightbox = document.createElement('div');
+    lightbox.className = 'lightbox';
+    lightbox.innerHTML = \`
+      <div class="lightbox-content">
+        <img src="" alt="" class="lightbox-image">
+        <div class="lightbox-close">&times;</div>
+        <div class="lightbox-nav lightbox-prev">&#10094;</div>
+        <div class="lightbox-nav lightbox-next">&#10095;</div>
+      </div>
+    \`;
+    document.body.appendChild(lightbox);
+    
+    // Variables para el lightbox
+    const lightboxImage = lightbox.querySelector('.lightbox-image');
+    const lightboxClose = lightbox.querySelector('.lightbox-close');
+    const lightboxPrev = lightbox.querySelector('.lightbox-prev');
+    const lightboxNext = lightbox.querySelector('.lightbox-next');
+    let currentImageIndex = 0;
+    let galleryImages = [];
+    
+    // Obtener todas las imágenes de la galería
+    const galleryItems = document.querySelectorAll('#${id} .gallery-item img');
+    galleryItems.forEach((img, index) => {
+      galleryImages.push({
+        src: img.src,
+        alt: img.alt
+      });
       
-      const formData = new FormData(attendanceForm);
-      const formValues = Object.fromEntries(formData.entries());
+      img.parentElement.addEventListener('click', function() {
+        currentImageIndex = index;
+        showLightbox(index);
+      });
+    });
+    
+    // Función para mostrar el lightbox
+    function showLightbox(index) {
+      if (galleryImages.length === 0) return;
       
-      // Aquí iría el código para enviar los datos a un servidor
-      console.log('Formulario enviado:', formValues);
+      const image = galleryImages[index];
+      lightboxImage.src = image.src;
+      lightboxImage.alt = image.alt;
+      lightbox.classList.add('active');
       
-      // Mostrar mensaje de confirmación
-      alert('¡Gracias por confirmar tu asistencia!');
-      attendanceForm.reset();
+      // Deshabilitar scroll en el body
+      document.body.style.overflow = 'hidden';
+    }
+    
+    // Función para cerrar el lightbox
+    function closeLightbox() {
+      lightbox.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    
+    // Función para ir a la imagen anterior
+    function prevImage() {
+      currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
+      showLightbox(currentImageIndex);
+    }
+    
+    // Función para ir a la imagen siguiente
+    function nextImage() {
+      currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
+      showLightbox(currentImageIndex);
+    }
+    
+    // Eventos para los controles del lightbox
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightboxPrev.addEventListener('click', prevImage);
+    lightboxNext.addEventListener('click', nextImage);
+    
+    // Cerrar lightbox con ESC
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeLightbox();
+      } else if (e.key === 'ArrowLeft') {
+        prevImage();
+      } else if (e.key === 'ArrowRight') {
+        nextImage();
+      }
+    });
+    
+    // Cerrar lightbox haciendo clic fuera de la imagen
+    lightbox.addEventListener('click', function(e) {
+      if (e.target === lightbox) {
+        closeLightbox();
+      }
     });
   }`;
       
@@ -511,14 +767,49 @@ function generateComponentJS(component: ComponentConfig, config: TemplateConfig)
   const audio = document.getElementById('background-music');
   
   if (playButton && audio) {
+    // Variable para controlar el estado
+    let isPlaying = false;
+    
+    // Inicializar con el estado correcto
+    updatePlayButtonIcon();
+    
+    // Manejar evento click
     playButton.addEventListener('click', function() {
-      if (audio.paused) {
-        audio.play();
-        playButton.innerHTML = '⏸️';
-      } else {
+      if (isPlaying) {
         audio.pause();
-        playButton.innerHTML = '▶️';
+        isPlaying = false;
+      } else {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            isPlaying = true;
+          }).catch(err => {
+            console.warn('Error al iniciar reproducción:', err);
+          });
+        }
       }
+      updatePlayButtonIcon();
+    });
+    
+    // Actualizar icono según estado
+    function updatePlayButtonIcon() {
+      playButton.innerHTML = isPlaying ? '⏸️' : '▶️';
+    }
+    
+    // Manejar eventos de audio
+    audio.addEventListener('ended', function() {
+      isPlaying = false;
+      updatePlayButtonIcon();
+    });
+    
+    audio.addEventListener('pause', function() {
+      isPlaying = false;
+      updatePlayButtonIcon();
+    });
+    
+    audio.addEventListener('play', function() {
+      isPlaying = true;
+      updatePlayButtonIcon();
     });
   }`;
       
